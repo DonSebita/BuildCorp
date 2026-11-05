@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Cobro {{ prestamo.codigo }}{% endblock %}
+{% block contenido %}
+{% with c=object %}
+<div class="encabezado">
+  <div>
+    <div class="d-flex flex-wrap align-items-center gap-3"><h1>Cobro <span class="folio">{{ prestamo.codigo }}</span></h1>{% timbre c.estado c.get_estado_display %}</div>
+    <p>{{ prestamo.contratista }} · RUT {{ prestamo.contratista.rut }} · {{ prestamo.obra }}</p>
+  </div>
+  <div class="acciones">
+    <a class="btn btn-outline-primary" href="{% url 'prestamos:comprobante' prestamo.codigo %}"><i class="bi bi-printer"></i>Comprobante</a>
+    {% if c.estado == "PENDIENTE" %}
+    <form method="post" action="{% url 'prestamos:pagar' c.pk %}" onsubmit="return confirm('¿Registrar el pago de {{ c.total|clp }}? El préstamo quedará cerrado.')">
+      {% csrf_token %}<button class="btn btn-primary" type="submit"><i class="bi bi-cash-coin"></i>Registrar pago</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+<div class="row g-4">
+  <div class="col-lg-7">
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Cálculo</h2><span class="small text-secondary">{{ prestamo.fecha_entrega|date:"d-m-Y" }} al {{ prestamo.fecha_devolucion_real|date:"d-m-Y" }}</span></div>
+      <div class="hoja-cuerpo">
+        <table class="desglose">
+          {% for pp in paquetes %}<tr><td>{{ pp.paquete.nombre }}<div class="small text-secondary">{{ pp.tarifa_diaria_aplicada|clp }}/día · {{ pp.tarifa_mensual_aplicada|clp }}/mes</div></td><td></td></tr>{% endfor %}
+          {% for d in sueltos %}<tr><td>{{ d.activo.codigo }} {{ d.activo.nombre }}<div class="small text-secondary">{{ d.tarifa_diaria_aplicada|clp }}/día · {{ d.tarifa_mensual_aplicada|clp }}/mes</div></td><td></td></tr>{% endfor %}
+          <tr><td>Arriendo por {{ c.dias_cobrados }} día{{ c.dias_cobrados|pluralize }}</td><td>{{ c.monto_arriendo|clp }}</td></tr>
+          {% if c.monto_atraso %}<tr><td>Recargo: {{ c.dias_atraso }} día{{ c.dias_atraso|pluralize }} × tarifa diaria × {{ params.recargo_atraso }}</td><td>{{ c.monto_atraso|clp }}</td></tr>{% endif %}
+          {% for d in danos %}<tr><td>Daño {{ d.activo.codigo }}: {{ d.observacion_dano }}</td><td>{{ d.cargo_dano|clp }}</td></tr>{% endfor %}
+          <tr class="sub"><td>Neto</td><td>{{ c.neto|clp }}</td></tr>
+          <tr class="sub"><td>IVA</td><td>{{ c.iva|clp }}</td></tr>
+          <tr class="total"><td>Total</td><td>{{ c.total|clp }}</td></tr>
+        </table>
+      </div>
+    </section>
+  </div>
+  <div class="col-lg-5">
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Cómo se calcula</h2></div>
+      <div class="hoja-cuerpo small">
+        <p>Menos de 30 días: días × tarifa diaria. Desde 30 días: meses completos × tarifa mensual, más los días sobrantes sin superar un mes.</p>
+        <p class="m-0">Las tarifas quedaron congeladas al crear el préstamo.{% if c.fecha_pago %} Pagado el {{ c.fecha_pago|date:"d-m-Y" }} (registró {{ c.registrado_por }}).{% endif %}</p>
+      </div>
+    </section>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

@@ -1,0 +1,6 @@
+# Tareas diarias de BuildCorp (hora de la EC2; ajustar si está en UTC)
+DJANGO_SETTINGS_MODULE=buildcorp.settings.prod
+# 06:00 revisión de morosidad: marca atrasos y bloquea tras los días de gracia
+0 6 * * * cd /home/ubuntu/BuildCorp && .venv/bin/python manage.py revisar_morosidad >> /home/ubuntu/buildcorp-cron.log 2>&1
+# 06:10 revisión de mantenciones por usos, horas y días
+10 6 * * * cd /home/ubuntu/BuildCorp && .venv/bin/python manage.py revisar_mantenimientos >> /home/ubuntu/buildcorp-cron.log 2>&1

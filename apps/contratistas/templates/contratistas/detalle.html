@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block titulo %}{{ object.razon_social }}{% endblock %}
+{% block contenido %}
+{% with c=object %}
+<div class="encabezado">
+  <div>
+    <div class="d-flex flex-wrap align-items-center gap-3"><h1>{{ c.razon_social }}</h1>{% timbre c.estado c.get_estado_display %}</div>
+    <p>RUT {{ c.rut }}{% if c.contacto %} · {{ c.contacto }}{% endif %}{% if c.telefono %} · {{ c.telefono }}{% endif %}{% if c.email %} · {{ c.email }}{% endif %}</p>
+  </div>
+  {% if es_ventas or es_admin %}
+  <div class="acciones">
+    {% if not c.bloqueado %}<a class="btn btn-primary" href="{% url 'prestamos:nuevo' %}?contratista={{ c.pk|stringformat:'d' }}"><i class="bi bi-plus-lg"></i>Nuevo arriendo</a>{% endif %}
+    <a class="btn btn-outline-primary" href="{% url 'contratistas:editar' c.pk %}">Editar</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if c.bloqueado %}
+<section class="hoja mb-4" style="border-color:#f2b9c4">
+  <div class="hoja-cuerpo">
+    <div class="row g-3 align-items-end">
+      <div class="col-lg-6">
+        <p class="fw-bold mb-1" style="color:var(--crit)"><i class="bi bi-lock-fill"></i> Bloqueado desde el {{ c.fecha_bloqueo|date:"d-m-Y" }}</p>
+        <p class="m-0">{{ c.motivo_bloqueo }}. No se le pueden entregar equipos hasta que el Administrador lo desbloquee.</p>
+      </div>
+      {% if es_admin or es_ventas %}
+      <form class="col-lg-6 d-flex gap-2" method="post" action="{% url 'contratistas:bloqueo' c.pk %}">
+        {% csrf_token %}
+        <input class="form-control" name="motivo" required minlength="5" placeholder="{% if es_admin %}Motivo del desbloqueo (queda registrado){% else %}¿Por qué pedir el desbloqueo?{% endif %}" aria-label="Motivo">
+        <button class="btn {% if es_admin %}btn-peligro{% else %}btn-outline-primary{% endif %} text-nowrap" type="submit">{% if es_admin %}Desbloquear{% else %}Solicitar desbloqueo{% endif %}</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% elif c.motivo_desbloqueo %}
+<div class="aviso info mb-4"><i class="bi bi-unlock"></i><div>Desbloqueado el {{ c.fecha_desbloqueo|date:"d-m-Y" }} por {{ c.desbloqueado_por }}: {{ c.motivo_desbloqueo }}</div></div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-xl-7">
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Préstamos</h2></div>
+      <div class="tabla-scroll">
+        <table class="table table-hover">
+          <thead><tr><th>Folio</th><th>Obra</th><th>Entrega</th><th>Devolución</th><th>Estado</th></tr></thead>
+          <tbody>
+          {% for p in prestamos %}
+            <tr><td><a class="folio" href="{{ p.get_absolute_url }}">{{ p.codigo }}</a></td><td>{{ p.obra }}</td>
+            <td class="num">{{ p.fecha_entrega|date:"d-m-Y" }}</td><td class="num">{{ p.fecha_devolucion_pactada|date:"d-m-Y" }}</td>
+            <td>{% timbre p.estado p.get_estado_display %}</td></tr>
+          {% empty %}<tr><td colspan="5"><div class="vacio">Sin préstamos todavía.</div></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <div class="col-xl-5">
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Obras</h2>{% if es_ventas or es_admin %}<a href="{% url 'contratistas:obra_crear' c.pk %}">+ Agregar obra</a>{% endif %}</div>
+      {% for o in obras %}
+      <div class="alerta-item">
+        <i class="bi bi-geo-alt{% if not o.activa %} text-secondary{% endif %}" aria-hidden="true"></i>
+        <div class="flex-grow-1">
+          <div class="d-flex justify-content-between gap-2"><span class="fw-semibold">{{ o.nombre }}</span>{% if not o.activa %}{% timbre "CERRADO" "Terminada" %}{% endif %}</div>
+          <p class="small text-secondary">{{ o.direccion|default:"Sin dirección" }}</p>
+          <p class="small">Responsable: {{ o.responsable_nombre }} · {{ o.responsable_rut }}</p>
+          {% if es_ventas or es_admin %}<a class="small" href="{% url 'contratistas:obra_editar' o.pk %}">Editar obra</a>{% endif %}
+        </div>
+      </div>
+      {% empty %}<div class="vacio"><i class="bi bi-geo"></i>Registra una obra para poder arrendarle equipos.</div>{% endfor %}
+    </section>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block titulo %}Contratistas{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Contratistas</h1><p>Constructoras y subcontratistas que arriendan equipos. No tienen cuenta en el sistema.</p></div>
+  {% if es_ventas or es_admin %}<div class="acciones"><a class="btn btn-primary" href="{% url 'contratistas:crear' %}"><i class="bi bi-plus-lg"></i>Nuevo contratista</a></div>{% endif %}
+</div>
+<form class="row g-2 mb-3" method="get" role="search">
+  <div class="col-md-5"><input class="form-control" type="search" name="q" value="{{ request.GET.q }}" placeholder="Buscar por razón social, RUT o contacto" aria-label="Buscar"></div>
+  <div class="col-md-3">
+    <select class="form-select" name="estado" aria-label="Estado" onchange="this.form.submit()">
+      <option value="">Todos</option>
+      <option value="ACTIVO" {% if request.GET.estado == "ACTIVO" %}selected{% endif %}>Activos</option>
+      <option value="BLOQUEADO" {% if request.GET.estado == "BLOQUEADO" %}selected{% endif %}>Bloqueados</option>
+    </select>
+  </div>
+  <div class="col-md-2"><button class="btn btn-outline-primary w-100" type="submit">Buscar</button></div>
+</form>
+<section class="hoja">
+  <div class="tabla-scroll">
+    <table class="table table-hover">
+      <thead><tr><th>Razón social</th><th>RUT</th><th>Contacto</th><th class="text-end">Obras activas</th><th class="text-end">En terreno</th><th>Estado</th></tr></thead>
+      <tbody>
+      {% for c in contratistas %}
+        <tr>
+          <td><a class="fw-semibold" href="{{ c.get_absolute_url }}">{{ c.razon_social }}</a></td>
+          <td class="num text-nowrap">{{ c.rut }}</td>
+          <td>{{ c.contacto|default:"—" }}{% if c.telefono %}<div class="small text-secondary">{{ c.telefono }}</div>{% endif %}</td>
+          <td class="num text-end">{{ c.n_obras }}</td>
+          <td class="num text-end">{{ c.en_terreno }}{% if c.atrasados %} <span class="timbre timbre-crit ms-1">{{ c.atrasados }} atrasado{{ c.atrasados|pluralize }}</span>{% endif %}</td>
+          <td>{% timbre c.estado c.get_estado_display %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6"><div class="vacio"><i class="bi bi-search"></i>Ningún contratista coincide con la búsqueda.</div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

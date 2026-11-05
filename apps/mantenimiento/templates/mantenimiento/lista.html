@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titulo %}Mantenimiento{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Mantenimiento</h1><p>Plan preventivo por usos, horas de motor o días: gana el que se cumpla primero.</p></div>
+  <div class="acciones">
+    <a class="btn btn-outline-primary" href="{% url 'activos:escanear' %}"><i class="bi bi-qr-code-scan"></i>Escanear</a>
+    <a class="btn btn-primary" href="{% url 'mantenimiento:registrar' %}"><i class="bi bi-plus-lg"></i>Registrar mantención</a>
+  </div>
+</div>
+
+<section class="kpis">
+  <div class="kpi{% if vencidos %} critico{% endif %}"><span class="kpi-valor">{{ vencidos|length }}</span><span class="kpi-etiqueta">Vencidas</span></div>
+  <div class="kpi"><span class="kpi-valor">{{ proximos|length }}</span><span class="kpi-etiqueta">Próximas</span></div>
+  <div class="kpi"><span class="kpi-valor">{{ en_taller|length }}</span><span class="kpi-etiqueta">En taller</span></div>
+  <div class="kpi"><span class="kpi-valor">{{ historial|length }}</span><span class="kpi-etiqueta">Registros recientes</span></div>
+</section>
+
+<div class="row g-4">
+  <div class="col-xl-7 d-grid gap-4 align-content-start">
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Por hacer</h2></div>
+      <div class="tabla-scroll">
+        <table class="table table-hover">
+          <thead><tr><th>Código</th><th>Activo</th><th>Estado</th><th>Margen</th><th>Situación</th><th></th></tr></thead>
+          <tbody>
+          {% for p in vencidos %}{% include "mantenimiento/fila_plan.html" %}{% endfor %}
+          {% for p in proximos %}{% include "mantenimiento/fila_plan.html" %}{% endfor %}
+          {% if not vencidos and not proximos %}<tr><td colspan="6"><div class="vacio"><i class="bi bi-check2-circle"></i>Todos los equipos tienen su mantención al día.</div></td></tr>{% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Historial de mantenciones</h2></div>
+      <div class="tabla-scroll">
+        <table class="table">
+          <thead><tr><th>Folio</th><th>Activo</th><th>Fecha</th><th>Tipo</th><th>Técnico</th><th class="text-end">Costo</th><th>Estado</th></tr></thead>
+          <tbody>
+          {% for m in historial %}
+            <tr title="{{ m.descripcion }}"><td class="folio">{{ m.folio }}</td><td><a class="codigo" href="{{ m.activo.get_absolute_url }}">{{ m.activo.codigo }}</a></td>
+            <td class="num">{{ m.fecha|date:"d-m-Y" }}</td><td>{{ m.get_tipo_display }}</td><td>{{ m.tecnico }}</td>
+            <td class="num text-end">{{ m.costo|clp }}</td><td>{% timbre m.estado %}</td></tr>
+          {% empty %}<tr><td colspan="7"><div class="vacio">Sin mantenciones registradas.</div></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <div class="col-xl-5">
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>En taller ahora</h2></div>
+      {% for a in en_taller %}
+        <div class="alerta-item">
+          <i class="bi bi-wrench-adjustable" style="color:var(--warn)" aria-hidden="true"></i>
+          <div class="flex-grow-1 d-flex justify-content-between gap-2 align-items-center">
+            <div><a class="folio" href="{{ a.get_absolute_url }}">{{ a.codigo }}</a> {{ a.nombre }}<p class="small text-secondary">{{ a.categoria.nombre }}</p></div>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'mantenimiento:registrar' %}?activo={{ a.codigo }}">Finalizar</a>
+          </div>
+        </div>
+      {% empty %}<div class="vacio"><i class="bi bi-check2-circle"></i>No hay equipos en taller.</div>{% endfor %}
+    </section>
+  </div>
+</div>
+{% endblock %}

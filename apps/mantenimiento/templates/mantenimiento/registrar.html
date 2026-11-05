@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Registrar mantención{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Registrar mantención</h1><p>Escanea la máquina o escribe su código. Al finalizar se reinician sus contadores y vuelve a estar disponible.</p></div>
+</div>
+<div class="row g-4">
+  <div class="col-xl-7">
+    <form method="post" class="hoja" novalidate>
+      {% csrf_token %}
+      <div class="hoja-cuerpo">{% include "includes/campos.html" %}</div>
+      <div class="hoja-cabeza justify-content-end" style="border-top:1px solid var(--linea-suave);border-bottom:0">
+        <a class="btn btn-outline-primary" href="{% if activo %}{{ activo.get_absolute_url }}{% else %}{% url 'mantenimiento:lista' %}{% endif %}">Cancelar</a>
+        <button class="btn btn-primary btn-lg" type="submit">Guardar con folio</button>
+      </div>
+    </form>
+  </div>
+  <aside class="col-xl-5 d-grid gap-4 align-content-start">
+    {% if activo %}
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2><span class="folio">{{ activo.codigo }}</span> {{ activo.nombre }}</h2>{% timbre activo.estado activo.get_estado_display %}</div>
+      <div class="hoja-cuerpo">
+        {% if activo.plan %}
+        <dl class="datos">
+          <div><dt>Usos desde la última</dt><dd class="num">{{ activo.usos_desde_mantencion }}{% if activo.plan.cada_usos %} de {{ activo.plan.cada_usos }}{% endif %}</dd></div>
+          {% if activo.plan.cada_horas %}<div><dt>Horas restantes</dt><dd class="num">{{ activo.plan.horas_restantes|floatformat:0 }} h</dd></div>{% endif %}
+          <div><dt>Fecha límite</dt><dd class="num">{{ activo.plan.proxima_fecha|date:"d-m-Y"|default:"—" }}</dd></div>
+          <div><dt>Situación</dt><dd>{% timbre activo.plan.situacion %}</dd></div>
+        </dl>
+        {% endif %}
+      </div>
+    </section>
+    {% else %}
+    <section class="hoja"><div class="hoja-cabeza"><h2>Escanear máquina</h2></div><div class="hoja-cuerpo" id="escaner"></div></section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+{% if not activo %}
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{% static 'js/escaner.js' %}"></script>
+<script>
+BCEscaner.montar({ contenedor: document.getElementById("escaner"), alLeer: (codigo) => { location.search = `?activo=${encodeURIComponent(codigo)}`; } });
+</script>
+{% endif %}
+{% endblock %}

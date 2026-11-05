@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block titulo %}Bodegas{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Bodegas e inventario</h1><p>Para trasladar un equipo, abre su ficha y usa «Trasladar».</p></div>
+</div>
+<div class="d-grid gap-4">
+{% for b in bodegas %}
+  <section class="hoja">
+    <div class="hoja-cabeza flex-wrap">
+      <div>
+        <h2>{{ b.nombre }}</h2>
+        <span class="small text-secondary">{{ b.get_tipo_display }}{% if b.obra %} · {{ b.obra }}{% endif %}{% if b.direccion %} · {{ b.direccion }}{% endif %}{% if b.encargado %} · Encargado: {{ b.encargado }}{% endif %}</span>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        {% for estado, n in b.conteo.items %}{% if n %}{% timbre estado %}<span class="num small me-2">{{ n }}</span>{% endif %}{% endfor %}
+      </div>
+    </div>
+    {% if b.inventario %}
+    <div class="tabla-scroll">
+      <table class="table table-hover">
+        <thead><tr><th>Código</th><th>Activo</th><th>Categoría</th><th>Estado</th><th>Mantención</th></tr></thead>
+        <tbody>
+        {% for a in b.inventario %}
+          <tr>
+            <td><a class="folio" href="{{ a.get_absolute_url }}">{{ a.codigo }}</a></td>
+            <td>{{ a.nombre }}</td><td>{{ a.categoria.nombre }}</td>
+            <td>{% timbre a.estado a.get_estado_display %}</td>
+            <td>{% if a.plan %}{% timbre a.plan.situacion %} <span class="small text-secondary">{{ a.plan.criterio }}</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<div class="vacio"><i class="bi bi-inbox"></i>Bodega sin equipos.</div>{% endif %}
+  </section>
+{% empty %}
+  <div class="vacio hoja"><i class="bi bi-house"></i>No hay bodegas registradas. Créalas en Django Admin.</div>
+{% endfor %}
+</div>
+{% endblock %}

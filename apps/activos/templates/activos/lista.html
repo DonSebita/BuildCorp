@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block titulo %}Activos{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <h1>Catálogo de activos</h1>
+    <p id="resumen">Cargando inventario…</p>
+  </div>
+  <div class="acciones">
+    {% if es_bodeguero or es_admin %}
+      <a class="btn btn-outline-primary" href="{% url 'dashboard:exportar' 'activos' %}"><i class="bi bi-download"></i>CSV</a>
+      <a class="btn btn-primary" href="{% url 'activos:crear' %}"><i class="bi bi-plus-lg"></i>Nuevo activo</a>
+    {% endif %}
+  </div>
+</div>
+
+<form class="row g-2 mb-3" id="filtros" role="search">
+  <div class="col-md-4"><input class="form-control" type="search" name="search" placeholder="Buscar por código, nombre o serie" aria-label="Buscar"></div>
+  <div class="col-6 col-md-3">
+    <select class="form-select" name="estado" aria-label="Estado">
+      <option value="">Todos los estados</option>
+      {% for valor, etiqueta in estados %}<option value="{{ valor }}">{{ etiqueta }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-3">
+    <select class="form-select" name="categoria" aria-label="Categoría">
+      <option value="">Todas las categorías</option>
+      {% for c in categorias %}<option value="{{ c.pk|stringformat:'d' }}">{{ c.nombre }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <select class="form-select" name="bodega_actual" aria-label="Bodega">
+      <option value="">Todas las bodegas</option>
+      {% for b in bodegas %}<option value="{{ b.pk|stringformat:'d' }}">{{ b.nombre }}</option>{% endfor %}
+    </select>
+  </div>
+</form>
+
+<section class="hoja">
+  <div class="tabla-scroll">
+    <table class="table table-hover">
+      <thead><tr>
+        <th class="ordenable" data-orden="codigo" aria-sort="ascending">Código</th>
+        <th class="ordenable" data-orden="nombre">Activo</th>
+        <th>Categoría</th>
+        <th>Bodega</th>
+        <th class="ordenable" data-orden="estado">Estado</th>
+        <th class="ordenable" data-orden="usos_desde_mantencion">Mantención</th>
+      </tr></thead>
+      <tbody id="filas"><tr><td colspan="6"><span class="esqueleto" style="height:10rem"></span></td></tr></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const { api, esc, timbre, num, vacio } = BC;
+  const form = document.getElementById("filtros");
+  const filas = document.getElementById("filas");
+  const resumen = document.getElementById("resumen");
+  let orden = "codigo";
+  const SIT = { VENCIDO: "Vencida", PROXIMO: "Próxima", AL_DIA: "Al día" };
+
+  // Filtros iniciales desde la URL (?estado=MANTENIMIENTO)
+  const qs = new URLSearchParams(location.search);
+  for (const [k, v] of qs) if (form.elements[k]) form.elements[k].value = v;
+
+  async function cargar() {
+    const p = new URLSearchParams(new FormData(form));
+    for (const [k, v] of [...p]) if (!v) p.delete(k);
+    p.set("ordering", orden);
+    p.set("page_size", 200);
+    history.replaceState(null, "", "?" + [...p].filter(([k]) => !["ordering", "page_size"].includes(k)).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&"));
+    try {
+      const d = await api(`/api/v1/activos/?${p}`);
+      resumen.textContent = `${num(d.count)} activo${d.count === 1 ? "" : "s"} con estos filtros`;
+      if (!d.results.length) {
+        filas.innerHTML = `<tr><td colspan="6">${vacio("Ningún activo coincide con los filtros. Prueba quitando alguno.", "bi-search")}</td></tr>`;
+        return;
+      }
+      filas.innerHTML = d.results.map((a) => `
+        <tr>
+          <td><a class="folio" href="${esc(a.url)}">${esc(a.codigo)}</a></td>
+          <td>${esc(a.nombre)}<div class="small text-secondary">${esc([a.marca, a.modelo].filter(Boolean).join(" "))}</div></td>
+          <td>${esc(a.categoria_nombre)}</td>
+          <td>${a.estado === "EN_USO" ? "En terreno" : esc(a.bodega_nombre || "—")}</td>
+          <td>${timbre(a.estado, a.estado_display)}</td>
+          <td>${a.mantencion ? `${timbre(a.mantencion.situacion, SIT[a.mantencion.situacion])} <span class="small text-secondary ms-1">${esc(a.mantencion.criterio)}</span>` : "—"}</td>
+        </tr>`).join("");
+    } catch (e) {
+      filas.innerHTML = `<tr><td colspan="6"><div class="aviso error m-3">${esc(e.message)}</div></td></tr>`;
+    }
+  }
+
+  let t;
+  form.addEventListener("input", () => { clearTimeout(t); t = setTimeout(cargar, 250); });
+  form.addEventListener("submit", (e) => { e.preventDefault(); cargar(); });
+  document.querySelectorAll("th.ordenable").forEach((th) => th.addEventListener("click", () => {
+    const campo = th.dataset.orden;
+    orden = orden === campo ? `-${campo}` : campo;
+    document.querySelectorAll("th.ordenable").forEach((x) => x.removeAttribute("aria-sort"));
+    th.setAttribute("aria-sort", orden.startsWith("-") ? "descending" : "ascending");
+    cargar();
+  }));
+  cargar();
+})();
+</script>
+{% endblock %}

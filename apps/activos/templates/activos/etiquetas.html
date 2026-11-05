@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titulo %}Etiquetas QR{% endblock %}
+{% block contenido %}
+{% if seleccion %}
+<div class="encabezado no-imprimir">
+  <div><h1>Hoja de etiquetas</h1><p>{{ seleccion|length }} etiqueta{{ seleccion|length|pluralize }}. Imprime en papel adhesivo y pega cada una en su máquina.</p></div>
+  <div class="acciones">
+    <a class="btn btn-outline-primary" href="{% url 'activos:etiquetas' %}">Cambiar selección</a>
+    <button class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i>Imprimir</button>
+  </div>
+</div>
+<div class="hoja-etiquetas">
+  {% for a in seleccion %}
+  <div class="etiqueta">
+    <img src="{% url 'activos:qr' a.codigo %}" alt="QR {{ a.codigo }}">
+    <div><span class="codigo folio">{{ a.codigo }}</span><strong class="d-block">{{ a.nombre }}</strong><span class="small">{{ a.categoria.nombre }} · BuildCorp</span></div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="encabezado">
+  <div><h1>Imprimir etiquetas QR</h1><p>Marca los activos y genera una hoja lista para imprimir.</p></div>
+</div>
+<form method="get" class="hoja">
+  <div class="hoja-cabeza">
+    <div class="form-check m-0"><input class="form-check-input" type="checkbox" id="todos"><label class="form-check-label" for="todos">Seleccionar todos</label></div>
+    <button class="btn btn-primary" type="submit"><i class="bi bi-upc-scan"></i>Generar hoja</button>
+  </div>
+  <div class="tabla-scroll">
+    <table class="table table-hover">
+      <thead><tr><th></th><th>Código</th><th>Activo</th><th>Categoría</th><th>Bodega</th></tr></thead>
+      <tbody>
+      {% for a in activos %}
+        <tr>
+          <td style="width:1%"><input class="form-check-input" type="checkbox" name="ids" value="{{ a.pk|stringformat:'d' }}" id="a{{ a.pk|stringformat:'d' }}" aria-label="Incluir {{ a.codigo }}"></td>
+          <td><label class="folio" for="a{{ a.pk|stringformat:'d' }}">{{ a.codigo }}</label></td>
+          <td>{{ a.nombre }}</td><td>{{ a.categoria.nombre }}</td><td>{{ a.bodega_actual|default:"En terreno" }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</form>
+<script>
+document.getElementById("todos").addEventListener("change", (e) => {
+  document.querySelectorAll('input[name="ids"]').forEach((c) => (c.checked = e.target.checked));
+});
+</script>
+{% endif %}
+{% endblock %}

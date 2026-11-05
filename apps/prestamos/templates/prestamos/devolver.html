@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Recibir {{ prestamo.codigo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <div class="d-flex flex-wrap align-items-center gap-3"><h1>Devolución <span class="folio">{{ prestamo.codigo }}</span></h1>{% timbre prestamo.estado prestamo.get_estado_display %}</div>
+    <p>{{ prestamo.contratista }} · {{ prestamo.obra }} · salió el {{ prestamo.fecha_entrega|date:"d-m-Y" }}, pactado al {{ prestamo.fecha_devolucion_pactada|date:"d-m-Y" }}</p>
+  </div>
+  <div class="acciones"><a class="btn btn-outline-primary" href="{{ prestamo.get_absolute_url }}">Volver</a></div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-8 pasos align-content-start">
+    <section class="hoja paso">
+      <div class="hoja-cabeza"><h2 class="paso-titulo">Estado de llegada</h2><span class="small text-secondary">{{ detalles|length }} equipo{{ detalles|length|pluralize }}</span></div>
+      <div id="recepcion">
+      {% for d in detalles %}
+        <div class="item-terreno" data-id="{{ d.pk|stringformat:'d' }}">
+          <div>
+            <span class="folio">{{ d.activo.codigo }}</span> <span class="fw-semibold">{{ d.activo.nombre }}</span>
+            <div class="small text-secondary">{{ d.activo.categoria.nombre }}{% if d.prestamo_paquete %} · {{ d.prestamo_paquete.paquete.nombre }}{% endif %}{% if d.horometro_salida is not None %} · salió con {{ d.horometro_salida }} h{% endif %}</div>
+          </div>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="opciones-estado" role="radiogroup" aria-label="Estado de llegada de {{ d.activo.codigo }}">
+              {% for v, t in estados_fisicos %}<input type="radio" name="e{{ d.pk|stringformat:'d' }}" id="e{{ d.pk|stringformat:'d' }}{{ v }}" value="{{ v }}" {% if forloop.first %}checked{% endif %}><label for="e{{ d.pk|stringformat:'d' }}{{ v }}">{{ t }}</label>{% endfor %}
+            </div>
+            {% if d.activo.categoria.requiere_horometro %}
+            <div class="input-group" style="width:12rem"><label class="input-group-text" for="h{{ d.pk|stringformat:'d' }}">Horómetro</label>
+              <input class="form-control" type="number" step="0.1" min="{{ d.horometro_salida|default:0|stringformat:'s' }}" id="h{{ d.pk|stringformat:'d' }}" inputmode="decimal" placeholder="{{ d.horometro_salida|default:0|stringformat:'s' }}"><span class="input-group-text">h</span></div>
+            {% endif %}
+          </div>
+          <div class="row g-2 dano" style="grid-column:1/-1" hidden>
+            <div class="col-md-8"><label class="form-label small" for="o{{ d.pk|stringformat:'d' }}">¿Qué daño o faltante tiene?</label><input class="form-control" id="o{{ d.pk|stringformat:'d' }}" placeholder="Ej.: cable cortado, falta la broca"></div>
+            <div class="col-md-4"><label class="form-label small" for="c{{ d.pk|stringformat:'d' }}">Cargo en CLP</label><input class="form-control" type="number" min="0" step="1000" id="c{{ d.pk|stringformat:'d' }}" value="0" inputmode="numeric"></div>
+          </div>
+        </div>
+      {% endfor %}
+      </div>
+    </section>
+    {% include "includes/firma.html" %}
+    <div class="aviso error" id="error" hidden></div>
+    <button class="btn btn-primary btn-lg" id="confirmar" type="button"><i class="bi bi-check2-circle"></i>Confirmar devolución</button>
+  </div>
+  <aside class="col-xl-4">
+    <section class="hoja" style="position:sticky;top:1rem">
+      <div class="hoja-cabeza"><h2>Cobro estimado</h2><span class="small text-secondary">{{ estimado.dias }} día{{ estimado.dias|pluralize }}</span></div>
+      <div class="hoja-cuerpo">
+        <table class="desglose">
+          <tr><td>Arriendo</td><td>{{ estimado.arriendo|clp }}</td></tr>
+          {% if estimado.atraso %}<tr><td>Recargo {{ estimado.dias_atraso }} día{{ estimado.dias_atraso|pluralize }} de atraso</td><td style="color:var(--crit)">{{ estimado.atraso|clp }}</td></tr>{% endif %}
+          <tr><td>Daños</td><td id="danos">$0</td></tr>
+        </table>
+        <p class="small text-secondary mt-3 mb-0">El cobro final (con IVA) se calcula al confirmar. Los equipos dañados o que cumplen su umbral de uso pasan solos a mantenimiento.</p>
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
+<script src="{% static 'js/firma.js' %}"></script>
+<script>
+(function () {
+  const { api, clp, ocupado } = BC;
+  const firma = BCFirma.montar(document.getElementById("firma-canvas"));
+  document.getElementById("firma-limpiar").addEventListener("click", firma.limpiar);
+  const err = document.getElementById("error");
+  const items = [...document.querySelectorAll("#recepcion [data-id]")];
+
+  function actualizar() {
+    let danos = 0;
+    items.forEach((el) => {
+      const v = el.querySelector("input[type=radio]:checked").value;
+      const conDano = v === "DANADO" || v === "FALTANTE";
+      el.querySelector(".dano").hidden = !conDano;
+      if (conDano) danos += Number(el.querySelector(`#c${el.dataset.id}`).value || 0);
+    });
+    document.getElementById("danos").textContent = clp(danos);
+  }
+  document.getElementById("recepcion").addEventListener("input", actualizar);
+
+  document.getElementById("confirmar").addEventListener("click", (e) => {
+    err.hidden = true;
+    const recepcion = {};
+    let problema = "";
+    items.forEach((el) => {
+      const id = el.dataset.id;
+      const estado = el.querySelector("input[type=radio]:checked").value;
+      const r = { estado_llegada: estado };
+      const h = el.querySelector(`#h${id}`);
+      if (h) {
+        if (!h.value && estado !== "FALTANTE") problema ||= `Anota el horómetro de llegada de ${el.querySelector(".folio").textContent}.`;
+        r.horometro_llegada = h.value;
+      }
+      if (estado === "DANADO" || estado === "FALTANTE") {
+        r.observacion_dano = el.querySelector(`#o${id}`).value.trim();
+        r.cargo_dano = Number(el.querySelector(`#c${id}`).value || 0);
+        if (!r.observacion_dano) problema ||= `Describe el daño de ${el.querySelector(".folio").textContent}.`;
+      }
+      recepcion[id] = r;
+    });
+    const nombre = document.getElementById("firma-nombre").value.trim();
+    const rut = document.getElementById("firma-rut").value.trim();
+    problema ||= !nombre || !rut ? "Escribe el nombre y el RUT de quien firma." : firma.vacia() ? "Falta la firma del responsable de obra." : "";
+    if (problema) { err.textContent = problema; err.hidden = false; return; }
+    ocupado(e.currentTarget, async () => {
+      try {
+        await api("/api/v1/prestamos/{{ prestamo.pk|stringformat:'d' }}/devolver/", { method: "POST", body: { recepcion, firma: { nombre, rut, imagen: firma.imagen() } } });
+        location.href = "{% url 'prestamos:comprobante' prestamo.codigo %}?nuevo=1";
+      } catch (e2) { err.textContent = e2.message; err.hidden = false; }
+    });
+  });
+})();
+</script>
+{% endblock %}

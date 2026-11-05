@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titulo %}Cobros{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Cobros</h1><p>Se generan solos al registrar cada devolución.</p></div>
+  <div class="acciones"><a class="btn btn-outline-primary" href="{% url 'dashboard:exportar' 'cobros' %}"><i class="bi bi-download"></i>CSV</a></div>
+</div>
+<section class="kpis" style="grid-template-columns:repeat(2,minmax(0,1fr));max-width:720px">
+  <a class="kpi{% if totales.PENDIENTE %} critico{% endif %}" href="?estado=PENDIENTE"><span class="kpi-valor">{{ totales.PENDIENTE|default:0|clp }}</span><span class="kpi-etiqueta">Por cobrar</span></a>
+  <a class="kpi" href="?estado=PAGADO"><span class="kpi-valor">{{ totales.PAGADO|default:0|clp }}</span><span class="kpi-etiqueta">Pagado</span></a>
+</section>
+<div class="d-flex gap-2 mb-3">
+  <a class="btn btn-sm {% if not request.GET.estado %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?">Todos</a>
+  <a class="btn btn-sm {% if request.GET.estado == 'PENDIENTE' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?estado=PENDIENTE">Pendientes</a>
+  <a class="btn btn-sm {% if request.GET.estado == 'PAGADO' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?estado=PAGADO">Pagados</a>
+</div>
+<section class="hoja">
+  <div class="tabla-scroll">
+    <table class="table table-hover">
+      <thead><tr><th>Préstamo</th><th>Contratista</th><th class="text-end">Días</th><th class="text-end">Atraso</th><th class="text-end">Neto</th><th class="text-end">Total</th><th>Estado</th></tr></thead>
+      <tbody>
+      {% for c in cobros %}
+        <tr>
+          <td><a class="folio" href="{% url 'prestamos:cobro' c.pk %}">{{ c.prestamo.codigo }}</a></td>
+          <td>{{ c.prestamo.contratista }}</td>
+          <td class="num text-end">{{ c.dias_cobrados }}</td>
+          <td class="num text-end">{% if c.dias_atraso %}<span style="color:var(--crit)">{{ c.dias_atraso }}</span>{% else %}—{% endif %}</td>
+          <td class="num text-end">{{ c.neto|clp }}</td>
+          <td class="num text-end fw-bold">{{ c.total|clp }}</td>
+          <td>{% timbre c.estado c.get_estado_display %}</td>
+        </tr>
+      {% empty %}<tr><td colspan="7"><div class="vacio"><i class="bi bi-receipt"></i>No hay cobros en esta vista.</div></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

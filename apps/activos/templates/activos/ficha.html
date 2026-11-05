@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block titulo %}{{ object.codigo }}{% endblock %}
+{% block contenido %}
+{% with a=object %}
+<div class="encabezado">
+  <div>
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <h1><span class="folio">{{ a.codigo }}</span> {{ a.nombre }}</h1>
+      <span id="estado-actual">{% timbre a.estado a.get_estado_display %}</span>
+    </div>
+    <p>{{ a.categoria.nombre }}{% if a.marca %} · {{ a.marca }} {{ a.modelo }}{% endif %} · {{ a.bodega_actual|default:"En terreno" }}</p>
+  </div>
+  <div class="acciones no-imprimir">
+    {% if es_bodeguero or es_admin %}
+      {% if a.estado != "DADO_DE_BAJA" and a.estado != "EN_USO" %}
+        <a class="btn btn-primary" href="{% url 'mantenimiento:registrar' %}?activo={{ a.codigo }}"><i class="bi bi-wrench-adjustable"></i>Registrar mantención</a>
+      {% endif %}
+      <a class="btn btn-outline-primary" href="{% url 'activos:etiquetas' %}?ids={{ a.pk|stringformat:'d' }}"><i class="bi bi-printer"></i>Etiqueta</a>
+      <a class="btn btn-outline-primary" href="{% url 'activos:editar' a.codigo %}">Editar</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-8 d-grid gap-4 align-content-start">
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Línea de estados · últimos {{ ventana }} días</h2></div>
+      <div class="hoja-cuerpo">
+        {% if linea %}
+        <div class="linea-estados" role="img" aria-label="Historial de estados de {{ a.codigo }}">
+          {% for t in linea %}<span class="{{ t.estado }}" style="width:{{ t.ancho|stringformat:'.3f' }}%" title="{{ t.etiqueta }}: {{ t.dias }} día{{ t.dias|pluralize }} ({{ t.desde|date:'d-m-Y' }} a {{ t.hasta|date:'d-m-Y' }})"></span>{% endfor %}
+        </div>
+        <div class="linea-ejes"><span>Hace {{ ventana }} días</span><span>Hoy</span></div>
+        <div class="leyenda">
+          <span><i style="background:#3d8a54"></i>Disponible</span>
+          <span><i style="background:var(--tinta)"></i>En uso</span>
+          <span><i style="background:#d9a520"></i>Mantenimiento</span>
+          <span><i style="background:#9a98ad"></i>Dado de baja</span>
+        </div>
+        {% else %}<p class="text-secondary m-0">Sin movimientos registrados.</p>{% endif %}
+      </div>
+    </section>
+
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Hoja de vida</h2></div>
+      <div class="tabla-scroll">
+        <table class="table">
+          <thead><tr><th>Fecha</th><th>Cambio</th><th>Motivo</th><th>Referencia</th><th>Usuario</th></tr></thead>
+          <tbody>
+          {% for h in historial %}
+            <tr>
+              <td class="num text-nowrap">{{ h.fecha|date:"d-m-Y H:i" }}</td>
+              <td class="text-nowrap">{% if h.estado_anterior %}{% timbre h.estado_anterior %} <i class="bi bi-arrow-right text-secondary"></i> {% endif %}{% timbre h.estado_nuevo %}</td>
+              <td>{{ h.motivo|default:"—" }}</td>
+              <td>{% if h.referencia %}<span class="folio">{{ h.referencia }}</span>{% else %}—{% endif %}</td>
+              <td>{{ h.usuario|default:"Sistema" }}</td>
+            </tr>
+          {% empty %}<tr><td colspan="5" class="vacio">Sin registros.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Mantenciones</h2></div>
+      <div class="tabla-scroll">
+        <table class="table">
+          <thead><tr><th>Folio</th><th>Fecha</th><th>Tipo</th><th>Técnico</th><th class="text-end">Costo</th><th>Estado</th></tr></thead>
+          <tbody>
+          {% for m in mantenimientos %}
+            <tr title="{{ m.descripcion }}">
+              <td class="folio">{{ m.folio }}</td><td class="num">{{ m.fecha|date:"d-m-Y" }}</td><td>{{ m.get_tipo_display }}</td>
+              <td>{{ m.tecnico }}</td><td class="num text-end">{{ m.costo|clp }}</td><td>{% timbre m.estado %}</td>
+            </tr>
+          {% empty %}<tr><td colspan="6" class="vacio">Aún no tiene mantenciones.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Préstamos</h2></div>
+      <div class="tabla-scroll">
+        <table class="table">
+          <thead><tr><th>Folio</th><th>Contratista</th><th>Obra</th><th>Salida</th><th>Llegada</th><th>Estado</th></tr></thead>
+          <tbody>
+          {% for d in prestamos %}
+            <tr>
+              <td><a class="folio" href="{{ d.prestamo.get_absolute_url }}">{{ d.prestamo.codigo }}</a></td>
+              <td>{{ d.prestamo.contratista }}</td><td>{{ d.prestamo.obra }}</td>
+              <td class="num text-nowrap">{{ d.prestamo.fecha_entrega|date:"d-m-Y" }}</td>
+              <td class="num text-nowrap">{{ d.prestamo.fecha_devolucion_real|date:"d-m-Y"|default:"—" }}</td>
+              <td>{% timbre d.prestamo.estado d.prestamo.get_estado_display %}</td>
+            </tr>
+          {% empty %}<tr><td colspan="6" class="vacio">Nunca se ha arrendado.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <aside class="col-xl-4 d-grid gap-4 align-content-start order-first order-xl-0">
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Mantención preventiva</h2>{% if plan %}{% timbre plan.situacion %}{% endif %}</div>
+      <div class="hoja-cuerpo">
+        {% if plan %}
+          {% if plan.cada_usos %}
+          <div class="mb-3">
+            <div class="d-flex justify-content-between small mb-1"><span>Usos</span><span class="num">{{ a.usos_desde_mantencion }} de {{ plan.cada_usos }} · quedan {{ plan.usos_restantes }}</span></div>
+            <div class="margen {{ plan.situacion }}"><span style="width:{% widthratio a.usos_desde_mantencion plan.cada_usos 100 %}%"></span></div>
+          </div>
+          {% endif %}
+          {% if plan.cada_horas %}
+          <div class="mb-3">
+            <div class="d-flex justify-content-between small mb-1"><span>Horas de motor</span><span class="num">{{ plan.horas_desde_mantencion|floatformat:0 }} de {{ plan.cada_horas }} h · quedan {{ plan.horas_restantes|floatformat:0 }}</span></div>
+            <div class="margen {{ plan.situacion }}"><span style="width:{% widthratio plan.horas_desde_mantencion plan.cada_horas 100 %}%"></span></div>
+          </div>
+          {% endif %}
+          {% if plan.cada_dias %}
+          <div class="mb-3">
+            <div class="d-flex justify-content-between small mb-1"><span>Fecha límite</span><span class="num">{{ plan.proxima_fecha|date:"d-m-Y" }} · {{ plan.dias_restantes }} días</span></div>
+          </div>
+          {% endif %}
+          <p class="small text-secondary m-0">Gana el criterio que se cumpla primero. Última mantención: {{ plan.ultima_fecha|date:"d-m-Y" }}.</p>
+        {% else %}<p class="text-secondary m-0">Sin plan de mantención.</p>{% endif %}
+      </div>
+    </section>
+
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Datos</h2></div>
+      <div class="hoja-cuerpo">
+        <dl class="datos">
+          <div><dt>N.º de serie</dt><dd>{{ a.numero_serie|default:"—" }}</dd></div>
+          <div><dt>Adquisición</dt><dd>{{ a.fecha_adquisicion|date:"d-m-Y"|default:"—" }}</dd></div>
+          <div><dt>Valor de compra</dt><dd class="num">{{ a.valor_compra|clp }}</dd></div>
+          <div><dt>Tarifa diaria</dt><dd class="num">{{ a.categoria.tarifa_diaria|clp }}</dd></div>
+          <div><dt>Usos totales</dt><dd class="num">{{ a.usos_totales }}</dd></div>
+          <div><dt>Horas de uso</dt><dd class="num">{% if a.categoria.requiere_horometro %}{{ a.horas_uso_totales|floatformat:1 }} h{% else %}No aplica{% endif %}</dd></div>
+        </dl>
+        <div class="d-flex align-items-center gap-3 mt-4">
+          <img src="{% url 'activos:qr' a.codigo %}" alt="Código QR de {{ a.codigo }}" width="104" height="104">
+          <p class="small text-secondary m-0">Escanea con el celular para abrir esta ficha.</p>
+        </div>
+      </div>
+    </section>
+
+    {% if es_bodeguero or es_admin %}{% if a.estado != "DADO_DE_BAJA" and a.estado != "EN_USO" %}
+    <section class="hoja no-imprimir">
+      <div class="hoja-cabeza"><h2>Acciones de bodega</h2></div>
+      <div class="hoja-cuerpo d-grid gap-4">
+        {% if a.estado != "EN_USO" %}
+        <form id="form-traslado" class="d-grid gap-2">
+          <label class="form-label m-0" for="destino">Trasladar a</label>
+          <select class="form-select" id="destino" name="bodega_destino" required>
+            {% for b in bodegas %}<option value="{{ b.pk|stringformat:'d' }}">{{ b.nombre }}</option>{% endfor %}
+          </select>
+          <input class="form-control" name="observacion" placeholder="Observación (opcional)" aria-label="Observación del traslado">
+          <button class="btn btn-outline-primary" type="submit">Trasladar</button>
+        </form>
+        {% endif %}
+        {% if a.estado == "DISPONIBLE" %}
+        <form id="form-mantencion" class="d-grid gap-2">
+          <label class="form-label m-0" for="motivo-mant">Enviar a mantención</label>
+          <input class="form-control" id="motivo-mant" name="motivo" placeholder="Ej.: ruido en el motor" required>
+          <button class="btn btn-outline-primary" type="submit">Enviar a taller</button>
+        </form>
+        {% endif %}
+        {% if a.estado != "EN_USO" %}
+        <form {% if es_admin %}id="form-baja"{% else %}method="post" action="{% url 'activos:solicitar_baja' a.codigo %}"{% endif %} class="d-grid gap-2">
+          {% csrf_token %}
+          <label class="form-label m-0" for="motivo-baja">{% if es_admin %}Dar de baja{% else %}Solicitar baja al Administrador{% endif %}</label>
+          <input class="form-control" id="motivo-baja" name="motivo" placeholder="Motivo: pérdida, daño irreparable…" required>
+          <button class="btn {% if es_admin %}btn-peligro{% else %}btn-outline-primary{% endif %}" type="submit">{% if es_admin %}Dar de baja definitivamente{% else %}Enviar solicitud{% endif %}</button>
+        </form>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}{% endif %}
+  </aside>
+</div>
+{% endwith %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const { api, aviso, ocupado } = BC;
+  const id = {{ object.pk|stringformat:"d" }};
+  async function enviar(form, url, cuerpo, confirmar) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!form.reportValidity()) return;
+      if (confirmar && !confirm(confirmar)) return;
+      ocupado(form.querySelector("button"), async () => {
+        try {
+          await api(url, { method: "POST", body: cuerpo(new FormData(form)) });
+          sessionStorage.setItem("bc-aviso", "Listo. La hoja de vida quedó actualizada.");
+          location.reload();
+        } catch (err) { aviso(err.message, "error"); }
+      });
+    });
+  }
+  const t = document.getElementById("form-traslado");
+  if (t) enviar(t, `/api/v1/activos/${id}/trasladar/`, (f) => ({ bodega_destino: f.get("bodega_destino"), observacion: f.get("observacion") }));
+  const m = document.getElementById("form-mantencion");
+  if (m) enviar(m, `/api/v1/activos/${id}/cambiar-estado/`, (f) => ({ estado: "MANTENIMIENTO", motivo: f.get("motivo") }));
+  const b = document.getElementById("form-baja");
+  if (b) enviar(b, `/api/v1/activos/${id}/cambiar-estado/`, (f) => ({ estado: "DADO_DE_BAJA", motivo: f.get("motivo") }),
+    "La baja es definitiva: el activo no se podrá volver a arrendar. ¿Continuar?");
+  const pendiente = sessionStorage.getItem("bc-aviso");
+  if (pendiente) {
+    sessionStorage.removeItem("bc-aviso");
+    aviso(pendiente);
+    document.querySelector("#estado-actual .timbre")?.classList.add("timbre-nuevo", "timbre-lg");
+  }
+})();
+</script>
+{% endblock %}

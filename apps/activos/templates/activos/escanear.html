@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Escanear QR{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Escanear una máquina</h1><p>Apunta al QR de la etiqueta y se abre su ficha.</p></div>
+</div>
+<div class="row g-4">
+  <div class="col-lg-6"><section class="hoja"><div class="hoja-cuerpo" id="escaner"></div></section></div>
+  <div class="col-lg-6"><section class="hoja" id="resultado" hidden><div class="hoja-cuerpo"></div></section></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{% static 'js/escaner.js' %}"></script>
+<script>
+(function () {
+  const { api, esc, timbre } = BC;
+  const res = document.getElementById("resultado");
+  BCEscaner.montar({
+    contenedor: document.getElementById("escaner"),
+    alLeer: async (codigo) => {
+      res.hidden = false;
+      const cuerpo = res.querySelector(".hoja-cuerpo");
+      try {
+        const a = await api(`/api/v1/activos/codigo/${encodeURIComponent(codigo)}/`);
+        cuerpo.innerHTML = `
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2"><span class="folio fs-4">${esc(a.codigo)}</span>${timbre(a.estado, a.estado_display)}</div>
+          <p class="fs-5 fw-semibold mb-1">${esc(a.nombre)}</p>
+          <p class="text-secondary">${esc(a.categoria_nombre)} · ${esc(a.bodega_nombre || "En terreno")}</p>
+          <div class="d-grid gap-2"><a class="btn btn-primary btn-lg" href="${esc(a.url)}">Abrir ficha</a>
+          {% if es_bodeguero or es_admin %}<a class="btn btn-outline-primary btn-lg" href="{% url 'mantenimiento:registrar' %}?activo=${encodeURIComponent(a.codigo)}">Registrar mantención</a>{% endif %}</div>`;
+      } catch (e) {
+        const texto = e.message.startsWith("Sin conexión") ? e.message : "no existe un activo con ese código.";
+        cuerpo.innerHTML = `<div class="aviso error"><span class="folio">${esc(codigo)}</span>: ${esc(texto)}</div>`;
+      }
+    },
+  });
+})();
+</script>
+{% endblock %}

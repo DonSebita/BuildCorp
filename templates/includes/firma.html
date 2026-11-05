@@ -1,0 +1,23 @@
+<section class="hoja paso">
+  <div class="hoja-cabeza"><h2 class="paso-titulo">Firma del responsable de obra</h2></div>
+  <div class="hoja-cuerpo d-grid gap-3">
+    <div class="row g-3">
+      <div class="col-md-7">
+        <label class="form-label" for="firma-nombre">Nombre de quien firma</label>
+        <input class="form-control" id="firma-nombre" value="{{ prestamo.obra.responsable_nombre }}" required autocomplete="off">
+      </div>
+      <div class="col-md-5">
+        <label class="form-label" for="firma-rut">RUT</label>
+        <input class="form-control" id="firma-rut" value="{{ prestamo.obra.responsable_rut }}" required autocomplete="off" inputmode="text">
+      </div>
+    </div>
+    <div class="firma-marco">
+      <canvas id="firma-canvas" aria-label="Recuadro para firmar con el dedo o el mouse"></canvas>
+      <div class="linea-firma"></div><span class="pista">Firme sobre la línea</span>
+    </div>
+    <div class="d-flex justify-content-between align-items-center gap-2">
+      <span class="small text-secondary">Se guarda con fecha, IP y huella SHA-256. No se puede editar después.</span>
+      <button class="btn btn-sm btn-outline-primary" type="button" id="firma-limpiar"><i class="bi bi-eraser"></i>Borrar firma</button>
+    </div>
+  </div>
+</section>

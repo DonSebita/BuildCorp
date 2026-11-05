@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block titulo %}{% if object %}Editar paquete{% else %}Nuevo paquete{% endif %}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>{% if object %}Editar «{{ object.nombre }}»{% else %}Nuevo paquete{% endif %}</h1>
+  <p>Define cuántos equipos de cada categoría incluye. Los préstamos ya creados mantienen la tarifa con que se crearon.</p></div>
+</div>
+<form method="post" class="d-grid gap-4" style="max-width:860px" novalidate>
+  {% csrf_token %}
+  <section class="hoja"><div class="hoja-cabeza"><h2>Datos y tarifas (CLP)</h2></div><div class="hoja-cuerpo">{% include "includes/campos.html" %}</div></section>
+  <section class="hoja">
+    <div class="hoja-cabeza"><h2>Contenido</h2></div>
+    <div class="hoja-cuerpo">
+      {{ items.management_form }}
+      {% if items.non_form_errors %}<div class="aviso error mb-3">{{ items.non_form_errors|join:" " }}</div>{% endif %}
+      <div class="d-grid gap-2">
+      {% for f in items %}
+        <div class="row g-2 align-items-start">
+          {% for h in f.hidden_fields %}{{ h }}{% endfor %}
+          <div class="col-7"><label class="visually-hidden" for="{{ f.categoria.id_for_label }}">Categoría</label>{{ f.categoria }}{{ f.categoria.errors }}</div>
+          <div class="col-3"><label class="visually-hidden" for="{{ f.cantidad.id_for_label }}">Cantidad</label>{{ f.cantidad }}{{ f.cantidad.errors }}</div>
+          <div class="col-2 pt-2">{% if f.instance.pk %}<div class="form-check">{{ f.DELETE }}<label class="form-check-label" for="{{ f.DELETE.id_for_label }}">Quitar</label></div>{% endif %}</div>
+        </div>
+      {% endfor %}
+      </div>
+      <p class="form-text mt-2">¿Faltan filas? Guarda y vuelve a editar para agregar más categorías.</p>
+    </div>
+  </section>
+  <div class="d-flex justify-content-end gap-2">
+    <a class="btn btn-outline-primary" href="{% url 'activos:paquetes' %}">Cancelar</a>
+    <button class="btn btn-primary" type="submit">Guardar paquete</button>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block titulo %}{{ prestamo.codigo }}{% endblock %}
+{% block contenido %}
+{% with p=prestamo %}
+<div class="encabezado">
+  <div>
+    <div class="d-flex flex-wrap align-items-center gap-3"><h1><span class="folio">{{ p.codigo }}</span></h1>{% timbre p.estado p.get_estado_display %}</div>
+    <p><a href="{{ p.contratista.get_absolute_url }}">{{ p.contratista }}</a> · {{ p.obra }} · {{ p.fecha_entrega|date:"d-m-Y" }} al {{ p.fecha_devolucion_pactada|date:"d-m-Y" }}</p>
+  </div>
+  <div class="acciones">
+    {% if es_encargado or es_admin %}
+      {% if p.estado == "BORRADOR" %}<a class="btn btn-primary btn-lg" href="{% url 'prestamos:entregar' p.codigo %}"><i class="bi bi-box-arrow-up-right"></i>Entregar</a>{% endif %}
+      {% if p.en_terreno %}<a class="btn btn-primary btn-lg" href="{% url 'prestamos:devolver' p.codigo %}"><i class="bi bi-box-arrow-in-down-left"></i>Recibir devolución</a>{% endif %}
+    {% endif %}
+    {% if p.estado != "BORRADOR" %}<a class="btn btn-outline-primary" href="{% url 'prestamos:comprobante' p.codigo %}"><i class="bi bi-printer"></i>Comprobante</a>{% endif %}
+    {% if cobro and es_ventas or cobro and es_admin %}<a class="btn btn-outline-primary" href="{% url 'prestamos:cobro' cobro.pk %}"><i class="bi bi-receipt"></i>Cobro</a>{% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-xl-8 d-grid gap-4 align-content-start">
+    {% for pp in paquetes %}
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>{{ pp.paquete.nombre }}</h2><span class="num small">{{ pp.tarifa_diaria_aplicada|clp }}/día · {{ pp.tarifa_mensual_aplicada|clp }}/mes</span></div>
+      <div class="tabla-scroll">
+        <table class="table">
+          <thead><tr><th>Código</th><th>Equipo</th><th>Salida</th><th>Llegada</th><th class="text-end">Cargo daño</th></tr></thead>
+          <tbody>
+          {% for d in pp.detalles.all %}
+            <tr><td><a class="folio" href="{{ d.activo.get_absolute_url }}">{{ d.activo.codigo }}</a></td><td>{{ d.activo.nombre }}</td>
+            <td>{{ d.get_estado_salida_display|default:"—" }}{% if d.horometro_salida is not None %} <span class="small text-secondary num">· {{ d.horometro_salida }} h</span>{% endif %}</td>
+            <td>{{ d.get_estado_llegada_display|default:"—" }}{% if d.observacion_dano %}<div class="small text-secondary">{{ d.observacion_dano }}</div>{% endif %}</td>
+            <td class="num text-end">{% if d.cargo_dano %}{{ d.cargo_dano|clp }}{% else %}—{% endif %}</td></tr>
+          {% empty %}
+            <tr><td colspan="5"><div class="vacio">Equipos por asignar al entregar: {% for i in pp.paquete.items.all %}{{ i }}{% if not forloop.last %}, {% endif %}{% endfor %}.</div></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endfor %}
+    {% if sueltos %}
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Equipos sueltos</h2></div>
+      <div class="tabla-scroll">
+        <table class="table">
+          <thead><tr><th>Código</th><th>Equipo</th><th class="text-end">Tarifa diaria</th><th>Salida</th><th>Llegada</th><th class="text-end">Cargo daño</th></tr></thead>
+          <tbody>
+          {% for d in sueltos %}
+            <tr><td><a class="folio" href="{{ d.activo.get_absolute_url }}">{{ d.activo.codigo }}</a></td><td>{{ d.activo.nombre }}</td>
+            <td class="num text-end">{{ d.tarifa_diaria_aplicada|clp }}</td>
+            <td>{{ d.get_estado_salida_display|default:"—" }}</td>
+            <td>{{ d.get_estado_llegada_display|default:"—" }}{% if d.observacion_dano %}<div class="small text-secondary">{{ d.observacion_dano }}</div>{% endif %}</td>
+            <td class="num text-end">{% if d.cargo_dano %}{{ d.cargo_dano|clp }}{% else %}—{% endif %}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="col-xl-4 d-grid gap-4 align-content-start">
+    {% if estimado %}
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Cobro estimado a hoy</h2><span class="small text-secondary">{{ estimado.dias }} día{{ estimado.dias|pluralize }}</span></div>
+      <div class="hoja-cuerpo">
+        <table class="desglose">
+          <tr><td>Arriendo</td><td>{{ estimado.arriendo|clp }}</td></tr>
+          {% if estimado.atraso %}<tr><td>Recargo por {{ estimado.dias_atraso }} día{{ estimado.dias_atraso|pluralize }} de atraso</td><td style="color:var(--crit)">{{ estimado.atraso|clp }}</td></tr>{% endif %}
+          <tr class="sub"><td>IVA</td><td>{{ estimado.iva|clp }}</td></tr>
+          <tr class="total"><td>Total</td><td>{{ estimado.total|clp }}</td></tr>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+    {% if cobro %}
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Cobro</h2>{% timbre cobro.estado cobro.get_estado_display %}</div>
+      <div class="hoja-cuerpo"><p class="kpi-valor m-0" style="font-size:2.4rem">{{ cobro.total|clp }}</p><p class="text-secondary m-0">{{ cobro.dias_cobrados }} días cobrados{% if cobro.dias_atraso %}, {{ cobro.dias_atraso }} de atraso{% endif %}</p></div>
+    </section>
+    {% endif %}
+    <section class="hoja">
+      <div class="hoja-cabeza"><h2>Trazabilidad</h2></div>
+      <div class="hoja-cuerpo">
+        <dl class="datos" style="grid-template-columns:1fr">
+          <div><dt>Creado por</dt><dd>{{ p.creado_por|default:"—" }} · {{ p.creado|date:"d-m-Y H:i" }}</dd></div>
+          <div><dt>Entregado por</dt><dd>{{ p.entregado_por|default:"Pendiente" }}</dd></div>
+          {% if firmas.ENTREGA %}<div><dt>Firma de entrega</dt><dd>{{ firmas.ENTREGA.nombre_firmante }} · {{ firmas.ENTREGA.fecha|date:"d-m-Y H:i" }}</dd></div>{% endif %}
+          <div><dt>Recibido por</dt><dd>{{ p.recibido_por|default:"Pendiente" }}</dd></div>
+          {% if firmas.DEVOLUCION %}<div><dt>Firma de devolución</dt><dd>{{ firmas.DEVOLUCION.nombre_firmante }} · {{ firmas.DEVOLUCION.fecha|date:"d-m-Y H:i" }}</dd></div>{% endif %}
+          {% if p.observaciones %}<div><dt>Observaciones</dt><dd class="fw-normal">{{ p.observaciones }}</dd></div>{% endif %}
+        </dl>
+      </div>
+    </section>
+  </aside>
+</div>
+{% endwith %}
+{% endblock %}

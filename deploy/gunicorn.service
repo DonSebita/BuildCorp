@@ -1,0 +1,14 @@
+[Unit]
+Description=BuildCorp (Gunicorn + Django)
+After=network.target postgresql.service
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/BuildCorp
+Environment=DJANGO_SETTINGS_MODULE=buildcorp.settings.prod
+ExecStart=/home/ubuntu/BuildCorp/.venv/bin/gunicorn buildcorp.wsgi:application --workers 3 --bind 127.0.0.1:8000 --timeout 60
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

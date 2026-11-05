@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block titulo %}Nuevo arriendo{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Nuevo arriendo</h1><p>Ventas registra la solicitud; el encargado de entrega asigna los equipos y recoge la firma en terreno.</p></div>
+</div>
+
+<form id="form-arriendo" class="row g-4" novalidate>
+  <div class="col-xl-8 d-grid gap-4 align-content-start pasos">
+    <section class="hoja paso">
+      <div class="hoja-cabeza"><h2 class="paso-titulo">Contratista y obra</h2></div>
+      <div class="hoja-cuerpo row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="contratista">Contratista</label>
+          <select class="form-select" id="contratista" name="contratista" required>
+            <option value="">Elige un contratista</option>
+            {% for c in contratistas %}<option value="{{ c.pk|stringformat:'d' }}" {% if c.bloqueado %}disabled{% endif %}>{{ c.razon_social }}{% if c.bloqueado %} · BLOQUEADO{% endif %}</option>{% endfor %}
+          </select>
+          <div class="form-text">Los contratistas bloqueados por morosidad no aparecen disponibles.</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="obra">Obra</label>
+          <select class="form-select" id="obra" name="obra" required disabled><option value="">Primero elige el contratista</option></select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="fecha_entrega">Entrega</label>
+          <input class="form-control" type="date" id="fecha_entrega" name="fecha_entrega" required value="{% now 'Y-m-d' %}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="fecha_devolucion_pactada">Devolución pactada</label>
+          <input class="form-control" type="date" id="fecha_devolucion_pactada" name="fecha_devolucion_pactada" required>
+        </div>
+      </div>
+    </section>
+
+    <section class="hoja paso">
+      <div class="hoja-cabeza"><h2 class="paso-titulo">Paquetes</h2></div>
+      <div class="hoja-cuerpo d-grid gap-2">
+        {% for p in paquetes %}
+        <label class="d-flex align-items-start gap-3 p-2 rounded" style="border:1px solid var(--linea-suave){% if not p.disp.disponible %};opacity:.7{% endif %}">
+          <input class="form-check-input mt-1" type="checkbox" name="paquetes" value="{{ p.pk|stringformat:'d' }}" {% if not p.disp.disponible %}disabled{% endif %}>
+          <span class="flex-grow-1">
+            <span class="fw-semibold">{{ p.nombre }}</span>
+            {% if not p.disp.disponible %}{% timbre "ATRASADO" "Sin stock" %}{% endif %}
+            <span class="d-block small text-secondary">{% for i in p.items.all %}{{ i }}{% if not forloop.last %} · {% endif %}{% endfor %}</span>
+            {% if not p.disp.disponible %}<span class="d-block small" style="color:var(--crit)">Falta: {{ p.faltan }}</span>{% endif %}
+          </span>
+          <span class="num text-end small">{{ p.tarifa_diaria|clp }}/día<br>{{ p.tarifa_mensual|clp }}/mes</span>
+        </label>
+        {% empty %}<p class="text-secondary m-0">No hay paquetes disponibles.</p>{% endfor %}
+      </div>
+    </section>
+
+    <section class="hoja paso">
+      <div class="hoja-cabeza"><h2 class="paso-titulo">Equipos sueltos</h2><input class="form-control form-control-sm" style="max-width:240px;min-height:34px" type="search" id="filtro-activos" placeholder="Filtrar equipos" aria-label="Filtrar equipos"></div>
+      <div class="tabla-scroll" style="max-height:360px;overflow-y:auto">
+        <table class="table table-hover">
+          <thead><tr><th></th><th>Código</th><th>Equipo</th><th class="text-end">Tarifa diaria</th></tr></thead>
+          <tbody id="lista-activos">
+          {% for a in activos %}
+            <tr data-texto="{{ a.codigo|lower }} {{ a.nombre|lower }} {{ a.categoria.nombre|lower }}">
+              <td style="width:1%"><input class="form-check-input" type="checkbox" name="activos" value="{{ a.pk|stringformat:'d' }}" id="ac{{ a.pk|stringformat:'d' }}"></td>
+              <td><label class="folio" for="ac{{ a.pk|stringformat:'d' }}">{{ a.codigo }}</label></td>
+              <td>{{ a.nombre }}<div class="small text-secondary">{{ a.marca }} {{ a.modelo }}</div></td>
+              <td class="num text-end">{{ a.categoria.tarifa_diaria|clp }}</td>
+            </tr>
+          {% empty %}<tr><td colspan="4"><div class="vacio">No hay equipos disponibles para arrendar sueltos.</div></td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="hoja">
+      <div class="hoja-cuerpo">
+        <label class="form-label" for="observaciones">Observaciones <span class="text-secondary fw-normal">(opcional)</span></label>
+        <textarea class="form-control" id="observaciones" name="observaciones" rows="2"></textarea>
+      </div>
+    </section>
+  </div>
+
+  <aside class="col-xl-4">
+    <section class="hoja" style="position:sticky;top:1rem">
+      <div class="hoja-cabeza"><h2>Cotización</h2><span class="small text-secondary" id="cot-dias"></span></div>
+      <div class="hoja-cuerpo">
+        <div id="cotizacion"><p class="text-secondary m-0">Elige fechas y al menos un paquete o equipo para ver el monto en CLP.</p></div>
+        <div class="aviso error mt-3" id="error" hidden></div>
+        <button class="btn btn-primary btn-lg w-100 mt-3" type="submit" id="crear">Crear solicitud de arriendo</button>
+        <p class="small text-secondary mt-2 mb-0">Tarifas congeladas al crear. Atrasos: recargo según parámetros del sistema.</p>
+      </div>
+    </section>
+  </aside>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const { api, clp, esc, aviso, ocupado } = BC;
+  const form = document.getElementById("form-arriendo");
+  const obras = {
+    {% for c in contratistas %}"{{ c.pk|stringformat:'d' }}": [{% for o in c.obras.all %}{% if o.activa %}{ id: {{ o.pk|stringformat:'d' }}, nombre: "{{ o.nombre|escapejs }}" },{% endif %}{% endfor %}],
+    {% endfor %}
+  };
+  const selC = form.contratista, selO = form.obra;
+  const cot = document.getElementById("cotizacion"), err = document.getElementById("error");
+
+  function llenarObras() {
+    const lista = obras[selC.value] || [];
+    selO.innerHTML = lista.length ? lista.map((o) => `<option value="${o.id}">${esc(o.nombre)}</option>`).join("")
+      : `<option value="">${selC.value ? "Este contratista no tiene obras activas" : "Primero elige el contratista"}</option>`;
+    selO.disabled = !lista.length;
+  }
+  selC.addEventListener("change", () => { llenarObras(); cotizar(); });
+
+  const inicial = new URLSearchParams(location.search).get("contratista");
+  if (inicial) { selC.value = inicial; llenarObras(); }
+
+  document.getElementById("filtro-activos").addEventListener("input", (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll("#lista-activos tr[data-texto]").forEach((tr) => (tr.hidden = q && !tr.dataset.texto.includes(q)));
+  });
+
+  function datos() {
+    const f = new FormData(form);
+    return {
+      contratista: f.get("contratista") || undefined,
+      obra: f.get("obra") || undefined,
+      fecha_entrega: f.get("fecha_entrega"),
+      fecha_devolucion_pactada: f.get("fecha_devolucion_pactada"),
+      paquetes: f.getAll("paquetes").map(Number),
+      activos: f.getAll("activos").map(Number),
+      observaciones: f.get("observaciones"),
+    };
+  }
+
+  let t;
+  async function cotizar() {
+    const d = datos();
+    err.hidden = true;
+    if (!d.fecha_entrega || !d.fecha_devolucion_pactada || (!d.paquetes.length && !d.activos.length)) {
+      cot.innerHTML = '<p class="text-secondary m-0">Elige fechas y al menos un paquete o equipo para ver el monto en CLP.</p>';
+      document.getElementById("cot-dias").textContent = "";
+      return;
+    }
+    try {
+      const c = await api("/api/v1/prestamos/cotizar/", { method: "POST", body: d });
+      document.getElementById("cot-dias").textContent = `${c.dias} día${c.dias === 1 ? "" : "s"}`;
+      cot.innerHTML = `
+        <table class="desglose">
+          ${c.lineas.map((l) => `<tr><td>${esc(l.nombre)}<div class="small text-secondary">${esc(l.codigo)}</div></td><td>${clp(l.subtotal)}</td></tr>`).join("")}
+          <tr class="sub"><td>Neto</td><td>${clp(c.neto)}</td></tr>
+          <tr class="sub"><td>IVA</td><td>${clp(c.iva)}</td></tr>
+          <tr class="total"><td>Total estimado</td><td>${clp(c.total)}</td></tr>
+        </table>`;
+    } catch (e) {
+      cot.innerHTML = "";
+      err.textContent = e.message; err.hidden = false;
+    }
+  }
+  form.addEventListener("change", () => { clearTimeout(t); t = setTimeout(cotizar, 200); });
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const d = datos();
+    if (!d.contratista || !d.obra) { err.textContent = "Elige el contratista y la obra."; err.hidden = false; return; }
+    ocupado(document.getElementById("crear"), async () => {
+      try {
+        const p = await api("/api/v1/prestamos/", { method: "POST", body: d });
+        location.href = p.url;
+      } catch (e2) { err.textContent = e2.message; err.hidden = false; aviso(e2.message, "error"); }
+    });
+  });
+  cotizar();
+})();
+</script>
+{% endblock %}

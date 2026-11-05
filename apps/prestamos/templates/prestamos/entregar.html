@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Entregar {{ prestamo.codigo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <h1>Entrega <span class="folio">{{ prestamo.codigo }}</span></h1>
+    <p>{{ prestamo.contratista }} · {{ prestamo.obra }}{% if prestamo.obra.direccion %} · {{ prestamo.obra.direccion }}{% endif %} · vuelve el {{ prestamo.fecha_devolucion_pactada|date:"d-m-Y" }}</p>
+  </div>
+  <div class="acciones"><a class="btn btn-outline-primary" href="{{ prestamo.get_absolute_url }}">Volver</a></div>
+</div>
+
+{% if prestamo.contratista.bloqueado %}
+<div class="aviso error mb-4"><i class="bi bi-lock-fill"></i><div>{{ prestamo.contratista }} está bloqueado por morosidad. No se puede entregar hasta que el Administrador lo desbloquee.</div></div>
+{% endif %}
+
+<div class="pasos" style="max-width:980px">
+  <section class="hoja paso" id="paso-asignar" hidden>
+    <div class="hoja-cabeza"><h2 class="paso-titulo">Asignar equipos a los paquetes</h2></div>
+    <div class="hoja-cuerpo row g-4">
+      <div class="col-lg-6">
+        <label class="form-label" for="pp">Paquete</label>
+        <select class="form-select mb-3" id="pp"></select>
+        <div id="escaner"></div>
+      </div>
+      <div class="col-lg-6" id="faltantes"></div>
+    </div>
+  </section>
+
+  <section class="hoja paso">
+    <div class="hoja-cabeza"><h2 class="paso-titulo">Revisión de salida</h2><span class="small text-secondary" id="conteo"></span></div>
+    <div id="checklist"><div class="hoja-cuerpo"><span class="esqueleto" style="height:6rem"></span></div></div>
+  </section>
+
+  {% include "includes/firma.html" %}
+
+  <div class="aviso error" id="error" hidden></div>
+  <button class="btn btn-primary btn-lg" id="confirmar" type="button"><i class="bi bi-check2-circle"></i>Confirmar entrega</button>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="{% static 'js/firma.js' %}"></script>
+<script src="{% static 'js/escaner.js' %}"></script>
+<script>
+(function () {
+  const { api, esc, aviso, ocupado } = BC;
+  const URL_P = "/api/v1/prestamos/{{ prestamo.pk|stringformat:'d' }}/";
+  const ESTADOS = [{% for v, t in estados_fisicos %}["{{ v }}", "{{ t }}"],{% endfor %}];
+  const firma = BCFirma.montar(document.getElementById("firma-canvas"));
+  document.getElementById("firma-limpiar").addEventListener("click", firma.limpiar);
+  const err = document.getElementById("error");
+  let prestamo;
+
+  function render() {
+    const conFaltantes = prestamo.paquetes.filter((pp) => pp.faltantes.length);
+    const pasoAsignar = document.getElementById("paso-asignar");
+    pasoAsignar.hidden = !prestamo.paquetes.length;
+    const sel = document.getElementById("pp");
+    const elegido = sel.value;
+    sel.innerHTML = prestamo.paquetes.map((pp) => `<option value="${pp.id}">${esc(pp.nombre)}${pp.faltantes.length ? "" : " · completo"}</option>`).join("");
+    if (elegido) sel.value = elegido; else if (conFaltantes[0]) sel.value = conFaltantes[0].id;
+    document.getElementById("faltantes").innerHTML = prestamo.paquetes.map((pp) => `
+      <div class="mb-3"><p class="fw-semibold mb-1">${esc(pp.nombre)}</p>
+      ${pp.faltantes.length ? pp.faltantes.map((f) => `<p class="m-0"><span class="timbre timbre-warn">Falta ${f.cantidad}</span> ${esc(f.categoria)}</p>`).join("")
+        : '<span class="timbre timbre-ok">Completo</span>'}</div>`).join("");
+
+    const det = prestamo.detalles;
+    document.getElementById("conteo").textContent = `${det.length} equipo${det.length === 1 ? "" : "s"}`;
+    document.getElementById("checklist").innerHTML = det.length ? det.map((d) => `
+      <div class="item-terreno" data-id="${d.id}">
+        <div>
+          <span class="folio">${esc(d.codigo)}</span> <span class="fw-semibold">${esc(d.nombre)}</span>
+          <div class="small text-secondary">${esc(d.categoria)}${d.prestamo_paquete ? "" : " · suelto"}</div>
+          ${d.prestamo_paquete ? `<button type="button" class="btn btn-sm btn-link p-0 text-secondary" data-quitar="${d.id}">Quitar de este paquete</button>` : ""}
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <div class="opciones-estado">
+            ${ESTADOS.map(([v, t], i) => `<input type="radio" name="e${d.id}" id="e${d.id}${v}" value="${v}" ${i === 0 ? "checked" : ""}><label for="e${d.id}${v}">${t}</label>`).join("")}
+          </div>
+          ${d.requiere_horometro ? `<div class="input-group" style="width:12rem"><label class="input-group-text" for="h${d.id}">Horómetro</label>
+            <input class="form-control" type="number" step="0.1" min="0" id="h${d.id}" value="${d.horas_actuales ?? ""}" inputmode="decimal"><span class="input-group-text">h</span></div>` : ""}
+        </div>
+      </div>`).join("") : BC.vacio("Asigna los equipos de los paquetes para revisarlos.", "bi-box-seam");
+
+    document.querySelectorAll("[data-quitar]").forEach((b) => b.addEventListener("click", () =>
+      ocupado(b, async () => {
+        try { prestamo = await api(URL_P + "quitar-activo/", { method: "POST", body: { detalle: b.dataset.quitar } }); render(); }
+        catch (e) { aviso(e.message, "error"); }
+      })));
+  }
+
+  BCEscaner.montar({
+    contenedor: document.getElementById("escaner"),
+    alLeer: async (codigo) => {
+      try {
+        prestamo = await api(URL_P + "asignar-activos/", { method: "POST", body: { prestamo_paquete: document.getElementById("pp").value, codigos: [codigo] } });
+        aviso(`${codigo} asignado.`);
+        render();
+      } catch (e) { aviso(e.message, "error"); }
+    },
+  });
+
+  document.getElementById("confirmar").addEventListener("click", (e) => {
+    err.hidden = true;
+    const falta = prestamo.paquetes.some((pp) => pp.faltantes.length);
+    const nombre = document.getElementById("firma-nombre").value.trim();
+    const rut = document.getElementById("firma-rut").value.trim();
+    const problema = falta ? "Faltan equipos por asignar en algún paquete."
+      : !prestamo.detalles.length ? "El préstamo no tiene equipos."
+      : !nombre || !rut ? "Escribe el nombre y el RUT de quien firma."
+      : firma.vacia() ? "Falta la firma del responsable de obra." : "";
+    if (problema) { err.textContent = problema; err.hidden = false; return; }
+    const checklist = {};
+    document.querySelectorAll("#checklist [data-id]").forEach((el) => {
+      const id = el.dataset.id;
+      checklist[id] = { estado_salida: el.querySelector(`input[name="e${id}"]:checked`).value };
+      const h = el.querySelector(`#h${id}`);
+      if (h) checklist[id].horometro_salida = h.value;
+    });
+    ocupado(e.currentTarget, async () => {
+      try {
+        await api(URL_P + "entregar/", { method: "POST", body: { checklist, firma: { nombre, rut, imagen: firma.imagen() } } });
+        location.href = "{% url 'prestamos:comprobante' prestamo.codigo %}?nuevo=1";
+      } catch (e2) { err.textContent = e2.message; err.hidden = false; }
+    });
+  });
+
+  api(URL_P).then((d) => { prestamo = d; render(); }).catch((e) => { err.textContent = e.message; err.hidden = false; });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,8 @@
+<tr>
+  <td><a class="folio" href="{{ p.activo.get_absolute_url }}">{{ p.activo.codigo }}</a></td>
+  <td>{{ p.activo.nombre }}<div class="small text-secondary">{{ p.activo.categoria.nombre }}</div></td>
+  <td>{% timbre p.activo.estado p.activo.get_estado_display %}</td>
+  <td class="num">{{ p.criterio }}</td>
+  <td>{% if p.vencido %}{% timbre "VENCIDO" "Vencida" %}{% else %}{% timbre "PROXIMO" "Próxima" %}{% endif %}</td>
+  <td class="text-end">{% if p.activo.estado != "EN_USO" %}<a class="btn btn-sm btn-outline-primary" href="{% url 'mantenimiento:registrar' %}?activo={{ p.activo.codigo }}">Registrar</a>{% else %}<span class="small text-secondary">En terreno</span>{% endif %}</td>
+</tr>

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titulo %}Alertas{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Alertas</h1><p>{% if es_admin %}Ves las alertas de todos los roles.{% else %}Alertas para {{ rol }} y avisos generales.{% endif %} Se generan con la revisión diaria y al registrar devoluciones.</p></div>
+</div>
+<div class="d-flex flex-wrap gap-2 mb-3" id="filtros">
+  <button class="btn btn-sm btn-primary" data-f="resuelta=false">Abiertas</button>
+  <button class="btn btn-sm btn-outline-primary" data-f="resuelta=false&nivel=CRITICO">Críticas</button>
+  <button class="btn btn-sm btn-outline-primary" data-f="resuelta=true">Resueltas</button>
+</div>
+<section class="hoja" id="lista"><div class="hoja-cuerpo"><span class="esqueleto" style="height:8rem"></span></div></section>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const { api, esc, fechaHora, timbre, vacio, aviso } = BC;
+  const lista = document.getElementById("lista");
+  let filtro = "resuelta=false";
+  const ICONOS = { CRITICO: "bi-exclamation-octagon-fill", WARNING: "bi-exclamation-triangle-fill", INFO: "bi-info-circle-fill" };
+  const NIVEL = { CRITICO: "Crítico", WARNING: "Atención", INFO: "Aviso" };
+
+  async function cargar() {
+    document.querySelectorAll("#filtros button").forEach((b) => {
+      b.classList.toggle("btn-primary", b.dataset.f === filtro);
+      b.classList.toggle("btn-outline-primary", b.dataset.f !== filtro);
+    });
+    try {
+      const d = await api(`/api/v1/alertas/?${filtro}&page_size=100`);
+      lista.innerHTML = d.results.length ? d.results.map((a) => `
+        <div class="alerta-item ${a.nivel}${a.leida ? " leida" : ""}" data-id="${a.id}">
+          <i class="bi ${ICONOS[a.nivel]}" aria-hidden="true"></i>
+          <div class="flex-grow-1">
+            <strong>${timbre(a.nivel, NIVEL[a.nivel])} ${esc(a.tipo_display)} · ${fechaHora(a.fecha)}</strong>
+            <p>${a.enlace ? `<a href="${esc(a.enlace)}">${esc(a.mensaje)}</a>` : esc(a.mensaje)}</p>
+          </div>
+          ${a.resuelta ? "" : `<div class="d-flex gap-2 align-items-start">
+            ${a.leida ? "" : `<button class="btn btn-sm btn-outline-primary" data-accion="marcar-leida">Leída</button>`}
+            <button class="btn btn-sm btn-outline-primary" data-accion="resolver">Resolver</button></div>`}
+        </div>`).join("") : vacio("No hay alertas en esta vista.", "bi-bell-slash");
+    } catch (e) { lista.innerHTML = `<div class="aviso error m-3">${esc(e.message)}</div>`; }
+  }
+  lista.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-accion]");
+    if (!b) return;
+    const id = b.closest("[data-id]").dataset.id;
+    try { await api(`/api/v1/alertas/${id}/${b.dataset.accion}/`, { method: "POST" }); cargar(); }
+    catch (err) { aviso(err.message, "error"); }
+  });
+  document.querySelectorAll("#filtros button").forEach((b) => b.addEventListener("click", () => { filtro = b.dataset.f; cargar(); }));
+  cargar();
+})();
+</script>
+{% endblock %}

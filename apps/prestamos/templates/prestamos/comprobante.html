@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block titulo %}Comprobante {{ prestamo.codigo }}{% endblock %}
+{% block contenido %}
+{% with p=prestamo %}
+<div class="encabezado no-imprimir">
+  <div><h1>Comprobante</h1><p>Imprime o guarda como PDF desde el navegador (Ctrl + P).</p></div>
+  <div class="acciones">
+    <a class="btn btn-outline-primary" href="{{ p.get_absolute_url }}">Ver préstamo</a>
+    <button class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i>Imprimir</button>
+  </div>
+</div>
+
+<article class="hoja" style="max-width:900px">
+  <header class="hoja-cuerpo d-flex flex-wrap justify-content-between gap-3" style="border-bottom:1px solid var(--linea)">
+    <div>
+      <span class="marca p-0" style="color:var(--tinta)">Build<b style="color:var(--folio)">Corp</b></span>
+      <p class="small text-secondary m-0">Arriendo de herramientas y maquinaria ligera</p>
+    </div>
+    <div class="text-end">
+      <p class="m-0 small text-secondary">Comprobante de {% if p.estado == "ENTREGADO" or p.estado == "ATRASADO" %}entrega{% else %}devolución{% endif %}</p>
+      <p class="folio fs-3 m-0">{{ p.codigo }}</p>
+      <span id="timbre-estado">{% timbre p.estado p.get_estado_display %}</span>
+    </div>
+  </header>
+  <div class="hoja-cuerpo">
+    <dl class="datos mb-4">
+      <div><dt>Contratista</dt><dd>{{ p.contratista }}<br><span class="fw-normal small">RUT {{ p.contratista.rut }}</span></dd></div>
+      <div><dt>Obra</dt><dd>{{ p.obra }}<br><span class="fw-normal small">{{ p.obra.direccion }}</span></dd></div>
+      <div><dt>Entrega</dt><dd class="num">{{ p.fecha_entrega|date:"d-m-Y" }}</dd></div>
+      <div><dt>Devolución pactada</dt><dd class="num">{{ p.fecha_devolucion_pactada|date:"d-m-Y" }}</dd></div>
+      {% if p.fecha_devolucion_real %}<div><dt>Devolución real</dt><dd class="num">{{ p.fecha_devolucion_real|date:"d-m-Y" }}</dd></div>{% endif %}
+    </dl>
+    <table class="table mb-4">
+      <thead><tr><th>Código</th><th>Equipo</th><th>Paquete</th><th>Salida</th>{% if p.fecha_devolucion_real %}<th>Llegada</th>{% endif %}</tr></thead>
+      <tbody>
+      {% for d in detalles %}
+        <tr><td class="folio">{{ d.activo.codigo }}</td><td>{{ d.activo.nombre }}</td><td>{{ d.prestamo_paquete.paquete.nombre|default:"Suelto" }}</td>
+        <td>{{ d.get_estado_salida_display }}{% if d.horometro_salida is not None %} · {{ d.horometro_salida }} h{% endif %}</td>
+        {% if p.fecha_devolucion_real %}<td>{{ d.get_estado_llegada_display }}{% if d.horometro_llegada is not None %} · {{ d.horometro_llegada }} h{% endif %}{% if d.observacion_dano %}<div class="small">{{ d.observacion_dano }}</div>{% endif %}</td>{% endif %}</tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    {% if cobro %}
+    <div class="row justify-content-end mb-4"><div class="col-md-6">
+      <table class="desglose">
+        <tr><td>Arriendo ({{ cobro.dias_cobrados }} días)</td><td>{{ cobro.monto_arriendo|clp }}</td></tr>
+        {% if cobro.monto_atraso %}<tr><td>Recargo por {{ cobro.dias_atraso }} días de atraso</td><td>{{ cobro.monto_atraso|clp }}</td></tr>{% endif %}
+        {% if cobro.monto_danos %}<tr><td>Daños y faltantes</td><td>{{ cobro.monto_danos|clp }}</td></tr>{% endif %}
+        <tr class="sub"><td>Neto</td><td>{{ cobro.neto|clp }}</td></tr>
+        <tr class="sub"><td>IVA</td><td>{{ cobro.iva|clp }}</td></tr>
+        <tr class="total"><td>Total</td><td>{{ cobro.total|clp }}</td></tr>
+      </table>
+    </div></div>
+    {% endif %}
+
+    <div class="row g-4">
+      {% if firmas.ENTREGA %}
+      <div class="col-md-6">
+        <p class="small fw-semibold text-uppercase text-secondary mb-1">Firma de entrega</p>
+        <img src="{{ firmas.ENTREGA.imagen.url }}" alt="Firma de {{ firmas.ENTREGA.nombre_firmante }}" style="width:100%;max-height:140px;object-fit:contain;border-bottom:1px solid var(--texto)">
+        <p class="m-0 fw-semibold">{{ firmas.ENTREGA.nombre_firmante }} · {{ firmas.ENTREGA.rut_firmante }}</p>
+        <p class="small text-secondary m-0">{{ firmas.ENTREGA.fecha|date:"d-m-Y H:i" }} · Entregó {{ p.entregado_por }}</p>
+        <p class="small text-secondary m-0 text-break">SHA-256 {{ firmas.ENTREGA.hash }}</p>
+      </div>
+      {% endif %}
+      {% if firmas.DEVOLUCION %}
+      <div class="col-md-6">
+        <p class="small fw-semibold text-uppercase text-secondary mb-1">Firma de devolución</p>
+        <img src="{{ firmas.DEVOLUCION.imagen.url }}" alt="Firma de {{ firmas.DEVOLUCION.nombre_firmante }}" style="width:100%;max-height:140px;object-fit:contain;border-bottom:1px solid var(--texto)">
+        <p class="m-0 fw-semibold">{{ firmas.DEVOLUCION.nombre_firmante }} · {{ firmas.DEVOLUCION.rut_firmante }}</p>
+        <p class="small text-secondary m-0">{{ firmas.DEVOLUCION.fecha|date:"d-m-Y H:i" }} · Recibió {{ p.recibido_por }}</p>
+        <p class="small text-secondary m-0 text-break">SHA-256 {{ firmas.DEVOLUCION.hash }}</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</article>
+{% endwith %}
+{% endblock %}
+{% block scripts %}
+<script>
+if (new URLSearchParams(location.search).has("nuevo")) {
+  document.querySelector("#timbre-estado .timbre").classList.add("timbre-nuevo", "timbre-lg");
+  BC.aviso("Registro guardado con la firma del responsable.");
+  history.replaceState(null, "", location.pathname);
+}
+</script>
+{% endblock %}

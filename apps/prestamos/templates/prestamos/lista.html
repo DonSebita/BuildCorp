@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block titulo %}Préstamos{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>{% if es_encargado %}Entregas y devoluciones{% else %}Préstamos{% endif %}</h1><p id="resumen">Cargando…</p></div>
+  <div class="acciones">
+    {% if es_ventas or es_admin %}
+      <a class="btn btn-outline-primary" href="{% url 'dashboard:exportar' 'prestamos' %}"><i class="bi bi-download"></i>CSV</a>
+      <a class="btn btn-primary" href="{% url 'prestamos:nuevo' %}"><i class="bi bi-plus-lg"></i>Nuevo arriendo</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-3" role="tablist" id="pestanas">
+  <button class="btn btn-sm btn-outline-primary" data-estado="">Todos</button>
+  <button class="btn btn-sm btn-outline-primary" data-estado="BORRADOR">Por entregar</button>
+  <button class="btn btn-sm btn-outline-primary" data-estado="ENTREGADO,ATRASADO">En terreno</button>
+  <button class="btn btn-sm btn-outline-primary" data-estado="ATRASADO">Atrasados</button>
+  <button class="btn btn-sm btn-outline-primary" data-estado="DEVUELTO">Devueltos</button>
+  <button class="btn btn-sm btn-outline-primary" data-estado="CERRADO">Cerrados</button>
+  <input class="form-control form-control-sm ms-auto" style="max-width:280px;min-height:34px" type="search" id="buscar" placeholder="Folio, contratista u obra" aria-label="Buscar préstamo">
+</div>
+
+<section class="hoja">
+  <div class="tabla-scroll">
+    <table class="table table-hover">
+      <thead><tr><th>Folio</th><th>Contratista</th><th>Obra</th><th>Entrega</th><th>Devolución pactada</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="filas"><tr><td colspan="7"><span class="esqueleto" style="height:8rem"></span></td></tr></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const { api, esc, timbre, fecha, num, vacio } = BC;
+  const puedeOperar = {{ es_encargado|yesno:"true,false" }} || {{ es_admin|yesno:"true,false" }};
+  const filas = document.getElementById("filas");
+  const buscar = document.getElementById("buscar");
+  let estado = new URLSearchParams(location.search).get("estado") || "";
+
+  function accion(p) {
+    if (!puedeOperar) return "";
+    if (p.estado === "BORRADOR") return `<a class="btn btn-sm btn-primary" href="${p.url}entregar/">Entregar</a>`;
+    if (p.estado === "ENTREGADO" || p.estado === "ATRASADO") return `<a class="btn btn-sm btn-outline-primary" href="${p.url}devolver/">Recibir</a>`;
+    return "";
+  }
+
+  async function cargar() {
+    document.querySelectorAll("#pestanas [data-estado]").forEach((b) => {
+      const activo = b.dataset.estado === estado;
+      b.classList.toggle("btn-primary", activo);
+      b.classList.toggle("btn-outline-primary", !activo);
+      b.setAttribute("aria-selected", activo);
+    });
+    const p = new URLSearchParams({ page_size: 200, ordering: "-fecha_entrega" });
+    if (estado) p.set(estado.includes(",") ? "estado__in" : "estado", estado);
+    if (buscar.value.trim()) p.set("search", buscar.value.trim());
+    history.replaceState(null, "", estado ? `?estado=${estado}` : location.pathname);
+    try {
+      const d = await api(`/api/v1/prestamos/?${p}`);
+      document.getElementById("resumen").textContent = `${num(d.count)} préstamo${d.count === 1 ? "" : "s"}`;
+      filas.innerHTML = d.results.length ? d.results.map((x) => `
+        <tr>
+          <td><a class="folio" href="${esc(x.url)}">${esc(x.codigo)}</a></td>
+          <td>${esc(x.contratista_nombre)}</td><td>${esc(x.obra_nombre)}</td>
+          <td class="num">${fecha(x.fecha_entrega)}</td><td class="num">${fecha(x.fecha_devolucion_pactada)}</td>
+          <td>${timbre(x.estado, x.estado_display)}</td><td class="text-end">${accion(x)}</td>
+        </tr>`).join("") : `<tr><td colspan="7">${vacio("No hay préstamos en esta vista.", "bi-journal")}</td></tr>`;
+    } catch (e) {
+      filas.innerHTML = `<tr><td colspan="7"><div class="aviso error m-3">${esc(e.message)}</div></td></tr>`;
+    }
+  }
+  document.querySelectorAll("#pestanas [data-estado]").forEach((b) => b.addEventListener("click", () => { estado = b.dataset.estado; cargar(); }));
+  let t; buscar.addEventListener("input", () => { clearTimeout(t); t = setTimeout(cargar, 250); });
+  cargar();
+})();
+</script>
+{% endblock %}

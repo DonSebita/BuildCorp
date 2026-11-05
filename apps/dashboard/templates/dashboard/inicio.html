@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load static %}
+{% block titulo %}Inicio{% endblock %}
+
+{% block franja %}
+<header class="copia-rol">
+  <div>
+    <h1>Hola, {{ user.first_name|default:user.username }}</h1>
+    <div class="rol-linea">
+      <span class="rol-nombre">{{ rol|default:"Sin rol" }}</span>
+      <span>{% now "l j \d\e F" %}</span>
+    </div>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    {% if es_ventas %}
+      <a class="btn btn-primary btn-lg" href="{% url 'prestamos:nuevo' %}"><i class="bi bi-plus-lg"></i>Nuevo arriendo</a>
+      <a class="btn btn-outline-primary btn-lg" href="{% url 'contratistas:crear' %}">Registrar contratista</a>
+    {% elif es_bodeguero %}
+      <a class="btn btn-primary btn-lg" href="{% url 'activos:escanear' %}"><i class="bi bi-qr-code-scan"></i>Escanear máquina</a>
+      <a class="btn btn-outline-primary btn-lg" href="{% url 'mantenimiento:registrar' %}">Registrar mantención</a>
+      <a class="btn btn-outline-primary btn-lg" href="{% url 'activos:crear' %}">Nuevo activo</a>
+    {% elif es_encargado %}
+      <a class="btn btn-primary btn-lg" href="{% url 'prestamos:lista' %}?estado=BORRADOR"><i class="bi bi-box-arrow-up-right"></i>Entregar</a>
+      <a class="btn btn-outline-primary btn-lg" href="{% url 'prestamos:lista' %}?estado=ENTREGADO,ATRASADO"><i class="bi bi-box-arrow-in-down-left"></i>Recibir</a>
+    {% elif es_admin %}
+      <a class="btn btn-primary btn-lg" href="{% url 'alertas:lista' %}"><i class="bi bi-bell"></i>Revisar alertas</a>
+      <a class="btn btn-outline-primary btn-lg" href="{% url 'prestamos:parametros' %}">Parámetros</a>
+    {% endif %}
+  </div>
+</header>
+{% endblock %}
+
+{% block contenido %}
+{% if not rol %}
+  <div class="aviso warning"><i class="bi bi-exclamation-triangle"></i><div>Tu usuario no tiene un rol asignado. Pide al Administrador que te agregue a un grupo.</div></div>
+{% else %}
+<div id="dashboard" data-api="{% url 'api-dashboard-resumen' %}" data-alertas="{% url 'alertas:lista' %}">
+  <section class="kpis" id="kpis" aria-label="Indicadores">
+    {% for i in "1234" %}<div class="kpi"><span class="esqueleto" style="height:3rem;width:60%"></span><span class="esqueleto mt-2" style="height:.9rem;width:80%"></span></div>{% endfor %}
+  </section>
+
+  <div class="row g-4">
+    <div class="col-xl-8 d-grid gap-4 align-content-start" id="tablas">
+      <div class="hoja"><div class="hoja-cuerpo"><span class="esqueleto" style="height:12rem"></span></div></div>
+    </div>
+    <div class="col-xl-4 d-grid gap-4 align-content-start">
+      <div id="alertas"><div class="hoja"><div class="hoja-cuerpo"><span class="esqueleto" style="height:8rem"></span></div></div></div>
+      <section class="hoja" id="zona-grafico" hidden>
+        <div class="hoja-cabeza"><h2>Gráfico</h2></div>
+        <div class="hoja-cuerpo"><div style="height:240px"><canvas id="grafico" aria-label="Gráfico del panel" role="img"></canvas></div></div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}

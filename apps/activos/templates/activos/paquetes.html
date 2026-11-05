@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titulo %}Paquetes{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Paquetes de maquinaria</h1><p>Se definen por categoría y cantidad; los equipos concretos se asignan al entregar.</p></div>
+  {% if es_ventas or es_admin %}<div class="acciones"><a class="btn btn-primary" href="{% url 'activos:paquete_crear' %}"><i class="bi bi-plus-lg"></i>Nuevo paquete</a></div>{% endif %}
+</div>
+<div class="row g-4">
+{% for p in paquetes %}
+  <div class="col-lg-6">
+    <section class="hoja h-100">
+      <div class="hoja-cabeza">
+        <div><h2>{{ p.nombre }}</h2><span class="small text-secondary">{{ p.codigo }}</span></div>
+        <div class="d-flex gap-2 align-items-center">
+          {% if not p.activo %}{% timbre "CERRADO" "No se arrienda" %}{% elif p.disp.disponible %}{% timbre "DISPONIBLE" "Hay stock" %}{% else %}{% timbre "ATRASADO" "Sin stock" %}{% endif %}
+          {% if es_ventas or es_admin %}<a class="btn btn-sm btn-outline-primary" href="{% url 'activos:paquete_editar' p.pk %}">Editar</a>{% endif %}
+        </div>
+      </div>
+      <div class="hoja-cuerpo">
+        <table class="desglose mb-3">
+          {% for i in p.disp.items %}
+          <tr><td>{{ i.requeridos }} × {{ i.categoria }}</td><td class="{% if not i.alcanza %}text-danger{% endif %}">{{ i.disponibles }} disponible{{ i.disponibles|pluralize }}</td></tr>
+          {% endfor %}
+        </table>
+        <dl class="datos">
+          <div><dt>Tarifa diaria</dt><dd class="num">{{ p.tarifa_diaria|clp }}</dd></div>
+          <div><dt>Tarifa mensual</dt><dd class="num">{{ p.tarifa_mensual|clp }}</dd></div>
+          <div><dt>Suelto por día</dt><dd class="num text-secondary"><s>{{ p.tarifa_diaria_individual|clp }}</s></dd></div>
+        </dl>
+      </div>
+    </section>
+  </div>
+{% empty %}
+  <div class="col-12"><div class="hoja vacio"><i class="bi bi-boxes"></i>Aún no hay paquetes.</div></div>
+{% endfor %}
+</div>
+{% endblock %}
