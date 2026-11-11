@@ -380,7 +380,7 @@ Este archivo registra las consultas y la ayuda pedida a herramientas de IA duran
 **Apoyo de la IA:**
 - Creó `deploy/actualizar.sh`: si `origin/main` tiene commits nuevos hace `git merge --ff-only`, instala dependencias si cambió `requirements.txt`, aplica `migrate` y `collectstatic` y reinicia Gunicorn; usa un lock para no solaparse y registra cada despliegue en `/home/ubuntu/buildcorp-deploy.log`.
 - Creó el servicio y el timer de systemd (`buildcorp-actualizar`) que lo ejecutan cada 2 minutos, y los agregó a `setup_ec2.sh` para futuras instalaciones.
-- Documentó el flujo en el README y la decisión en PLANIFICACION; activó el timer en la EC2 y lo probó con este mismo commit.
+- Documentó el flujo en el README y la decisión en PLANIFICACION; activó el timer en la EC2 (instalación manual única) y lo probó subiendo un segundo commit sin entrar al servidor, que se desplegó solo.
 
 **Archivos:** `deploy/actualizar.sh`, `deploy/buildcorp-actualizar.service`, `deploy/buildcorp-actualizar.timer` (creados), `deploy/setup_ec2.sh`, `README.md`, `PLANIFICACION.md`, `prompts_ia.md` (modificados)
 
