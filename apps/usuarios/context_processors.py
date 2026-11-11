@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from . import roles
 
 
@@ -12,6 +14,7 @@ def rol(request):
         "es_encargado": actual == roles.ENCARGADO,
         "es_ventas": actual == roles.VENTAS,
         "alertas_abiertas": 0,
+        "mostrar_credenciales_demo": settings.MOSTRAR_CREDENCIALES_DEMO,
     }
     if actual:
         from apps.alertas.services import alertas_para

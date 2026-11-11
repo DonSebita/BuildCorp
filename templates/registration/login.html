@@ -29,8 +29,25 @@
   </section>
   <main class="login-form">
     <div style="max-width:360px;width:100%;margin:0 auto">
-      <h1>Iniciar sesión</h1>
-      <p class="text-secondary mb-4">Uso exclusivo del personal de BuildCorp.</p>
+      <div class="d-flex align-items-center justify-content-between gap-2">
+        <h1 class="mb-0">Iniciar sesión</h1>
+        {% if mostrar_credenciales_demo %}
+        <button type="button" class="ayuda-demo" id="btn-demo" aria-expanded="false" aria-controls="panel-demo" title="Credenciales de prueba">?</button>
+        {% endif %}
+      </div>
+      <p class="text-secondary mb-4 mt-2">Uso exclusivo del personal de BuildCorp.</p>
+      {% if mostrar_credenciales_demo %}
+      <div class="panel-demo mb-3" id="panel-demo" hidden>
+        <p class="mb-2"><b>Credenciales de prueba</b> · contraseña <code>buildcorp2026</code></p>
+        <p class="small text-secondary mb-2">Haz clic en un usuario para rellenar el formulario.</p>
+        <div class="d-grid gap-1">
+          <button type="button" class="btn btn-sm btn-outline-secondary text-start" data-usuario="admin">admin · Administrador</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary text-start" data-usuario="bodeguero">bodeguero · Bodeguero</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary text-start" data-usuario="encargado">encargado · Entrega y recepción</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary text-start" data-usuario="ventas">ventas · Ventas</button>
+        </div>
+      </div>
+      {% endif %}
       {% if form.errors %}
       <div class="aviso error mb-3" role="alert">Usuario o contraseña incorrectos. Revisa mayúsculas y vuelve a intentar.</div>
       {% endif %}
@@ -50,5 +67,24 @@
     </div>
   </main>
 </div>
+{% if mostrar_credenciales_demo %}
+<script>
+  (function () {
+    var btn = document.getElementById("btn-demo");
+    var panel = document.getElementById("panel-demo");
+    btn.addEventListener("click", function () {
+      panel.hidden = !panel.hidden;
+      btn.setAttribute("aria-expanded", String(!panel.hidden));
+    });
+    panel.querySelectorAll("[data-usuario]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        document.getElementById("id_username").value = b.dataset.usuario;
+        document.getElementById("id_password").value = "buildcorp2026";
+        document.querySelector("form button[type=submit]").focus();
+      });
+    });
+  })();
+</script>
+{% endif %}
 </body>
 </html>

@@ -350,6 +350,9 @@ a.alerta-item:hover { background: #f6f5fb; }
 .login-copias span { padding: 0.3rem 0.7rem; border-radius: 5px; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.04em; }
 .login-form { display: flex; flex-direction: column; justify-content: center; padding: 3rem; background: var(--superficie); }
 .login-form h1 { font-size: 1.6rem; font-weight: 800; }
+.ayuda-demo { width: 2rem; height: 2rem; flex: none; border-radius: 50%; border: 2px solid #2e2a6e; background: transparent; color: #2e2a6e; font-weight: 800; line-height: 1; cursor: pointer; }
+.ayuda-demo:hover, .ayuda-demo[aria-expanded="true"] { background: #2e2a6e; color: #fff; }
+.panel-demo { border: 1px dashed #2e2a6e; border-radius: 6px; padding: 0.75rem; background: #f4f3fb; font-size: 0.9rem; }
 
 /* ---------- etiquetas QR imprimibles ---------- */
 .hoja-etiquetas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }

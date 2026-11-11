@@ -12,6 +12,8 @@ SECRET_KEY = env("SECRET_KEY", default="dev-inseguro-cambiar-en-produccion")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+# Botón «?» en el login con las credenciales de la demo (solo para pruebas)
+MOSTRAR_CREDENCIALES_DEMO = env.bool("MOSTRAR_CREDENCIALES_DEMO", default=True)
 
 INSTALLED_APPS = [
     "django.contrib.admin",

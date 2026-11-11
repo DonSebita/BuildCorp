@@ -317,3 +317,44 @@ Este archivo registra las consultas y la ayuda pedida a herramientas de IA duran
 **Archivos:** `deploy/setup_ssl.sh` (creado), `buildcorp/settings/prod.py`, `README.md`, `PLANIFICACION.md`, `prompts_ia.md` (modificados)
 
 ---
+
+### #23 · 2026-11-11 · Despliegue y SSL hechos directamente en la EC2
+
+**Prompt:**
+> borra todo lo que hiciste en este PC, tenemos que hacerlo desde la EC2 (conexión: `ssh -i "buildcorp.pem" ubuntu@100.60.151.204`)
+
+**Apoyo de la IA:**
+- Revirtió en GitHub el commit con el script SSL y los cambios de README/PLANIFICACION/settings (`git revert`), conservando solo este registro.
+- Por SSH en la EC2 (Ubuntu 26.04, Python 3.14, PostgreSQL 18, Nginx 1.28): actualizó el sistema, clonó el repo y ejecutó `deploy/setup_ec2.sh` (PostgreSQL, migraciones, estáticos, datos demo, Gunicorn con systemd, Nginx como proxy inverso y cron).
+- Configuró HTTPS en el servidor: certificado Let's Encrypt para `100-60-151-204.sslip.io` (certbot por webroot, renovación automática con `certbot.timer`), bloque Nginx 443 con TLS 1.2/1.3 y HSTS, redirección del dominio a HTTPS y acceso por IP en HTTP intacto; actualizó `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` y `SITE_URL` en el `.env` del servidor.
+- Verificó: servicios activos, 34 activos en PostgreSQL, admin con estilos y login con CSRF correcto por `http://100.60.151.204` y por `https://100-60-151-204.sslip.io`.
+
+**Archivos:** `prompts_ia.md` (modificado). En la EC2: `/etc/nginx/sites-available/buildcorp`, `/etc/nginx/snippets/buildcorp_app.conf`, `.env` (configuración del servidor)
+
+---
+
+### #24 · 2026-11-11 · Botón de ayuda con credenciales de prueba en el login
+
+**Prompt:**
+> quiero que coloques un signo de interrogacion en la pagina del login para colocar las credenciales y no tener que acordarme, que sirva para pruebas
+
+**Apoyo de la IA:**
+- Agregó un botón «?» junto al título del login que despliega los usuarios demo (admin, bodeguero, encargado, ventas) y la contraseña de la demo; al hacer clic en un usuario se rellena el formulario.
+- Lo dejó controlado por la variable `MOSTRAR_CREDENCIALES_DEMO` (activa por defecto; `False` en el `.env` lo oculta), expuesta a las plantillas mediante el context processor de usuarios.
+
+**Archivos:** `templates/registration/login.html`, `static/css/buildcorp.css`, `buildcorp/settings/base.py`, `apps/usuarios/context_processors.py`, `.env.example` (modificados), `prompts_ia.md` (modificado)
+
+---
+
+### #25 · 2026-11-11 · Subir el botón de credenciales a la EC2
+
+**Prompt:**
+> hacelo
+
+**Apoyo de la IA:**
+- Hizo commit y push del botón «?» del login (sin incluir apuntes locales que había en `.env.example`).
+- En la EC2: `git pull`, `collectstatic` y reinicio de Gunicorn; verificó que el login publicado muestra el botón.
+
+**Archivos:** `prompts_ia.md` (modificado). En la EC2: actualización del código desplegado
+
+---
