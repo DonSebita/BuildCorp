@@ -2,9 +2,7 @@
 
 Software **interno** de BuildCorp para controlar préstamos, bodegas, hojas de vida de equipos, mantenimiento preventivo y cobros en CLP. Los contratistas no tienen cuenta: el responsable de obra firma en el dispositivo del encargado al entregar y al devolver.
 
-**URL pública (EC2):** http://100.60.151.204/ · Admin: http://100.60.151.204/admin/ (IP elástica de AWS Academy).
-
-**HTTPS (Let's Encrypt):** https://100-60-151-204.sslip.io/ — mismo servidor, con certificado válido (permite usar la cámara del escáner QR en vivo).
+**URL pública (EC2):** `http://<IP_PUBLICA>/` ← actualizar antes de la evaluación (en AWS Academy la IP cambia al reiniciar el laboratorio).
 
 | Usuario demo | Rol | Qué ve al entrar |
 |---|---|---|
@@ -67,8 +65,8 @@ Pruebas: `python manage.py test apps`
 
 ## Despliegue en AWS EC2 (AWS Academy)
 
-1. Lanzar una EC2 Ubuntu 22.04/24.04 (t3.small recomendada) y asociarle una **IP elástica**. Security Group: **22** y **80** (0.0.0.0/0) e ICMP para pruebas.
-2. Conectarse por SSH (o con **EC2 Instance Connect** desde la consola si la red bloquea el puerto 22) y clonar el repositorio en `/home/ubuntu/BuildCorp`.
+1. Lanzar una EC2 Ubuntu 24.04 (t2.micro o t3.small). Security Group: puerto **22** (tu IP) y **80** (0.0.0.0/0).
+2. Conectarse por SSH y clonar el repositorio en `/home/ubuntu/BuildCorp`.
 3. Ejecutar:
    ```bash
    cd /home/ubuntu/BuildCorp
@@ -78,15 +76,6 @@ Pruebas: `python manage.py test apps`
 4. Abrir `http://<IP_PUBLICA>/` y anotar la IP arriba en este README.
 
 Si la IP cambia: editar `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` y `SITE_URL` en `.env`, luego `sudo systemctl restart buildcorp`. Los QR se generan al vuelo con la IP vigente; basta con reimprimir las etiquetas.
-
-### HTTPS con Let's Encrypt (opcional, recomendado)
-
-Abrir el puerto **443** (0.0.0.0/0) en el Security Group y ejecutar:
-```bash
-cd /home/ubuntu/BuildCorp && git pull
-sudo bash deploy/setup_ssl.sh <IP_PUBLICA> [correo]
-```
-El script usa `<IP-con-guiones>.sslip.io` como dominio gratuito (resuelve a la IP de la EC2), obtiene el certificado con `certbot` (validación HTTP-01 por webroot), configura Nginx con un bloque `443 ssl` que termina el TLS y reenvía a Gunicorn con `X-Forwarded-Proto`, agrega el dominio a `ALLOWED_HOSTS`/`CSRF_TRUSTED_ORIGINS`, fija `SITE_URL` en HTTPS para los QR y deja la renovación automática (`certbot.timer`). El acceso por `http://<IP>/` se mantiene.
 
 > La cámara en vivo del navegador requiere HTTPS. Con `http://<IP>` el escáner usa **«Tomar foto del QR»**, que funciona sin HTTPS, y siempre se puede escribir el código.
 
