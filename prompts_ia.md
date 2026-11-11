@@ -385,3 +385,33 @@ Este archivo registra las consultas y la ayuda pedida a herramientas de IA duran
 **Archivos:** `deploy/actualizar.sh`, `deploy/buildcorp-actualizar.service`, `deploy/buildcorp-actualizar.timer` (creados), `deploy/setup_ec2.sh`, `README.md`, `PLANIFICACION.md`, `prompts_ia.md` (modificados)
 
 ---
+
+### #28 · 2026-11-11 · Cómo probar el QR desde el celular en la evaluación
+
+**Prompt:**
+> como puedo probar el codigo qr en la evaluacion? para ver desde el celular si funciona
+
+**Apoyo de la IA:**
+- Revisó cómo se genera el QR (URL de la ficha con `SITE_URL`) y cómo lo lee el escáner interno (`static/js/escaner.js`, cámara en vivo solo con HTTPS).
+- Explicó dos pruebas: con la cámara nativa del celular (abre la ficha tras iniciar sesión) y con «Escanear QR» dentro de la app, más el flujo de mantención y entrega.
+- Advirtió que si cambia la IP de la EC2 hay que actualizar `SITE_URL`, el certificado y Nginx antes de imprimir etiquetas.
+
+**Archivos:** `prompts_ia.md` (modificado)
+
+---
+
+### #29 · 2026-11-11 · Detalle de máquinas al hacer clic y QR para packs arrendados
+
+**Prompt:**
+> Quiero que los bodegueros o cualquier usuario con acceso a las máquinas pueda ver el detalle al hacer clic en el inventario, porque es engorroso encontrar el historial; y quiero un QR para los grupos de máquinas (el pack que se arrienda a la empresa). ¿Los bodegueros no pueden ver el detalle?
+
+**Apoyo de la IA:**
+- Aclaró que todos los roles ya podían ver la ficha; el problema era que solo el código era un enlace.
+- Hizo que la fila completa de cualquier tabla abra la ficha (clic global en `api.js`, cursor de puntero en CSS; Ctrl + clic abre otra pestaña).
+- Preguntó qué era un "grupo" y, según la respuesta (el pack arrendado a la empresa), agregó un QR por préstamo, un bloque "QR del pack" en su detalle y una etiqueta imprimible con la lista de máquinas.
+- Hizo que la pantalla "Escanear" reconozca el QR del pack y abra el préstamo.
+- Agregó un test y actualizó la planificación (sección 3.8).
+
+**Archivos:** `static/js/api.js`, `static/js/escaner.js`, `static/css/buildcorp.css`, `apps/activos/services.py`, `apps/activos/templates/activos/escanear.html`, `apps/prestamos/views.py`, `apps/prestamos/urls.py`, `apps/prestamos/templates/prestamos/detalle.html`, `apps/prestamos/tests/test_cobro_y_flujo.py`, `PLANIFICACION.md`, `prompts_ia.md` (modificados); `apps/prestamos/templates/prestamos/etiqueta.html` (creado)
+
+---

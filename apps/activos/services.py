@@ -109,17 +109,21 @@ def trasladar(activo, destino, usuario, observacion=""):
     return traslado
 
 
-def url_ficha(activo, request=None):
-    ruta = activo.get_absolute_url()
+def url_absoluta(objeto, request=None):
+    """URL completa de `objeto.get_absolute_url()`; usa SITE_URL si está definida."""
+    ruta = objeto.get_absolute_url()
     if settings.SITE_URL:
         return settings.SITE_URL.rstrip("/") + ruta
     return request.build_absolute_uri(ruta) if request else ruta
 
 
-def qr_png(activo, request=None):
-    """PNG del QR con la URL de la ficha. Se genera al vuelo: si cambia la IP de la EC2,
-    basta con reimprimir las etiquetas."""
-    img = qrcode.make(url_ficha(activo, request), box_size=8, border=2)
+url_ficha = url_absoluta
+
+
+def qr_png(objeto, request=None):
+    """PNG del QR con la URL del objeto (ficha de un activo o detalle de un préstamo).
+    Se genera al vuelo: si cambia la IP de la EC2, basta con reimprimir las etiquetas."""
+    img = qrcode.make(url_absoluta(objeto, request), box_size=8, border=2)
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()

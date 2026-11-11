@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block titulo %}Etiqueta {{ prestamo.codigo }}{% endblock %}
+{% block contenido %}
+{% with p=prestamo %}
+<div class="encabezado no-imprimir">
+  <div><h1>Etiqueta QR del pack</h1><p>Pégala en la caja, el contenedor o la guía de despacho. Al escanearla se abre el préstamo con todas sus máquinas.</p></div>
+  <div class="acciones">
+    <a class="btn btn-outline-primary" href="{{ p.get_absolute_url }}">Ver préstamo</a>
+    <button class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer"></i>Imprimir</button>
+  </div>
+</div>
+
+<article class="etiqueta-pack">
+  <img src="{% url 'prestamos:qr' p.codigo %}" alt="QR del préstamo {{ p.codigo }}" width="160" height="160">
+  <div>
+    <span class="folio fs-3 d-block">{{ p.codigo }}</span>
+    <strong class="d-block">{{ p.contratista }}</strong>
+    <span class="small d-block">{{ p.obra }} · {{ p.fecha_entrega|date:"d-m-Y" }} al {{ p.fecha_devolucion_pactada|date:"d-m-Y" }}</span>
+    {% if detalles %}
+    <p class="small fw-semibold mt-2 mb-1">{{ detalles|length }} equipo{{ detalles|length|pluralize }}:</p>
+    <ul class="lista-pack">
+      {% for d in detalles %}<li><span class="codigo">{{ d.activo.codigo }}</span> {{ d.activo.nombre }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    <p class="small text-secondary mt-2 mb-0">Los equipos se asignan al entregar; reimprime la etiqueta después de la entrega para que aparezcan.</p>
+    {% endif %}
+    <span class="small d-block mt-2">BuildCorp</span>
+  </div>
+</article>
+{% endwith %}
+{% endblock %}

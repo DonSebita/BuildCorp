@@ -81,6 +81,16 @@
     </section>
     {% endif %}
     <section class="hoja">
+      <div class="hoja-cabeza"><h2>QR del pack</h2></div>
+      <div class="hoja-cuerpo qr-pack">
+        <img src="{% url 'prestamos:qr' p.codigo %}" alt="Código QR del préstamo {{ p.codigo }}" width="104" height="104">
+        <div>
+          <p class="small text-secondary mb-2">Un solo QR para todas las máquinas de este arriendo: al escanearlo se abre esta página y desde aquí, la ficha de cada equipo.</p>
+          <a class="btn btn-sm btn-outline-primary" href="{% url 'prestamos:etiqueta' p.codigo %}"><i class="bi bi-printer"></i>Imprimir etiqueta</a>
+        </div>
+      </div>
+    </section>
+    <section class="hoja">
       <div class="hoja-cabeza"><h2>Trazabilidad</h2></div>
       <div class="hoja-cuerpo">
         <dl class="datos" style="grid-template-columns:1fr">

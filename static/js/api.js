@@ -111,6 +111,25 @@
       );
     });
   }
+  /** Filas clicables: toda la fila abre el enlace principal (a.folio o a.codigo) de esa fila.
+   *  No interfiere con otros enlaces, botones ni campos dentro de la fila. */
+  const ENLACE_FILA = "a.folio, a.codigo";
+  document.addEventListener("click", (e) => {
+    const tr = e.target.closest("table.table tbody tr");
+    if (!tr || e.target.closest("a, button, input, select, textarea, label, summary")) return;
+    if (window.getSelection && String(window.getSelection()).length) return; // estaba seleccionando texto
+    const enlace = tr.querySelector(ENLACE_FILA);
+    if (!enlace) return;
+    if (e.ctrlKey || e.metaKey || e.button === 1) window.open(enlace.href, "_blank");
+    else location.href = enlace.href;
+  });
+  document.addEventListener("auxclick", (e) => {
+    const tr = e.button === 1 && e.target.closest("table.table tbody tr");
+    if (!tr || e.target.closest("a, button, input, select, textarea, label")) return;
+    const enlace = tr.querySelector(ENLACE_FILA);
+    if (enlace) window.open(enlace.href, "_blank");
+  });
+
   document.addEventListener("DOMContentLoaded", () => {
     etiquetar();
     let pendiente;

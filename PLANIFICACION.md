@@ -238,6 +238,15 @@ Cada activo físico tiene un **identificador único e inmutable**. Con él se ra
   4. Completa el formulario, que se guarda con el folio.
 - La **hoja de vida** de cada código muestra la línea de tiempo completa: alta, préstamos, traslados, todas sus mantenciones (folio, fecha, técnico y costo) y los cambios de estado.
 
+**QR del pack arrendado (préstamo)**
+- Cada préstamo tiene su propio QR (`/prestamos/P-2026-0001/qr.png`) con la URL de su detalle. Sirve para el **pack de máquinas** que se arrienda junto a una empresa: se pega una sola etiqueta en la caja, el contenedor o la guía de despacho.
+- Al escanearlo (cámara del celular o pantalla "Escanear" de la app) se abre el préstamo con todas sus máquinas, y desde ahí la ficha e historial de cada una.
+- La etiqueta imprimible (`/prestamos/<folio>/etiqueta/`) muestra el QR, el contratista, la obra, las fechas y la lista de códigos. Como los equipos de un paquete se asignan al entregar, conviene imprimirla después de la entrega.
+- La pueden ver todos los roles que leen préstamos (Ventas, Bodeguero, Encargado E/R y Admin).
+
+**Acceso rápido a la ficha desde los listados**
+- La ficha y la hoja de vida de una máquina las pueden ver **todos los roles**. En cualquier tabla (catálogo, bodegas, mantención, préstamos) se puede hacer clic en **cualquier parte de la fila** para abrir el detalle, no solo en el código. Ctrl + clic o clic central la abre en otra pestaña.
+
 ---
 
 ## 4. Modelo de datos

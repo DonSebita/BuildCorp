@@ -2,11 +2,12 @@ from django import forms
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views.generic import DetailView, ListView, TemplateView, UpdateView, View
 
 from apps.activos.models import Activo, PaqueteMaquinaria
-from apps.activos.services import disponibilidad_paquete, disponibles_por_categoria
+from apps.activos.services import disponibilidad_paquete, disponibles_por_categoria, qr_png
 from apps.contratistas.models import Contratista
 from apps.usuarios.forms import EstiloMixin
 from apps.usuarios.permissions import RolRequeridoMixin
@@ -120,6 +121,28 @@ class ComprobanteView(RolRequeridoMixin, PrestamoMixin, DetailView):
             detalles=p.detalles.select_related("activo__categoria", "prestamo_paquete__paquete"),
             firmas={f.tipo: f for f in p.firmas.all()},
             cobro=getattr(p, "cobro", None),
+            **kwargs,
+        )
+
+
+class QRView(RolRequeridoMixin, View):
+    """QR del pack arrendado: abre el detalle del préstamo con todas sus máquinas."""
+    roles = TODOS_LEEN
+
+    def get(self, request, codigo):
+        prestamo = get_object_or_404(Prestamo, codigo=codigo)
+        return HttpResponse(qr_png(prestamo, request), content_type="image/png")
+
+
+class EtiquetaView(RolRequeridoMixin, PrestamoMixin, DetailView):
+    """Etiqueta imprimible del pack: un QR y la lista de códigos que lo forman."""
+    roles = TODOS_LEEN
+    template_name = "prestamos/etiqueta.html"
+    context_object_name = "prestamo"
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(
+            detalles=self.object.detalles.select_related("activo__categoria", "prestamo_paquete__paquete").order_by("activo__codigo"),
             **kwargs,
         )
 

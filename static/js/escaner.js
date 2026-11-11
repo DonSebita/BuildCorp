@@ -11,11 +11,19 @@
     return m ? m[1].toUpperCase() : null;
   }
 
+  /** Folio de préstamo (QR de un pack de máquinas): URL del préstamo o el folio solo (P-2026-0001). */
+  function folioPackDe(texto) {
+    const t = String(texto || "").trim();
+    const m = t.match(/\/prestamos\/(P-\d{4}-\d{4})\/?/i) || t.match(/^(P-\d{4}-\d{4})$/i);
+    return m ? m[1].toUpperCase() : null;
+  }
+
   /**
-   * BCEscaner.montar({ contenedor, alLeer(codigo), soloCodigo })
+   * BCEscaner.montar({ contenedor, alLeer(codigo), alLeerPack(folio) })
    * contenedor: elemento donde dibujar el lector.
+   * alLeerPack (opcional): si se pasa, también acepta el QR de un préstamo (pack de máquinas).
    */
-  function montar({ contenedor, alLeer }) {
+  function montar({ contenedor, alLeer, alLeerPack }) {
     const enVivo = window.isSecureContext && navigator.mediaDevices && window.Html5Qrcode;
     const idLector = `lector-${Math.random().toString(36).slice(2, 8)}`;
     contenedor.innerHTML = `
@@ -33,6 +41,12 @@
       </div>`;
     const estado = contenedor.querySelector("[data-estado]");
     const entregar = (texto) => {
+      const folio = alLeerPack && folioPackDe(texto);
+      if (folio) {
+        estado.textContent = `Leído el pack: ${folio}`;
+        alLeerPack(folio);
+        return true;
+      }
       const codigo = codigoDe(texto);
       if (!codigo) {
         estado.textContent = "El QR no corresponde a un activo de BuildCorp.";
@@ -93,5 +107,5 @@
     }
   }
 
-  window.BCEscaner = { montar, codigoDe };
+  window.BCEscaner = { montar, codigoDe, folioPackDe };
 })();

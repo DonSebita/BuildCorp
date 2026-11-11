@@ -15,4 +15,6 @@ urlpatterns = [
     path("<str:codigo>/entregar/", views.EntregarView.as_view(), name="entregar"),
     path("<str:codigo>/devolver/", views.DevolverView.as_view(), name="devolver"),
     path("<str:codigo>/comprobante/", views.ComprobanteView.as_view(), name="comprobante"),
+    path("<str:codigo>/qr.png", views.QRView.as_view(), name="qr"),
+    path("<str:codigo>/etiqueta/", views.EtiquetaView.as_view(), name="etiqueta"),
 ]

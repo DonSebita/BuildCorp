@@ -112,3 +112,26 @@ class FlujoArriendoTests(TestCase):
         self.assertTrue(self.c.bloqueado)
         with self.assertRaises(ValidationError):
             services.crear_prestamo(self.ventas, self.c, self.obra, hoy, hoy, activos=[self.a2])
+
+    def test_qr_y_etiqueta_del_pack(self):
+        """QR de un préstamo (pack de máquinas): lo ve cualquier rol con acceso a las máquinas."""
+        from apps.usuarios.roles import BODEGUERO
+        bodeguero = Usuario.objects.create_user("bodega", password="x")
+        bodeguero.groups.add(Group.objects.get(name=BODEGUERO))
+        hoy = timezone.localdate()
+        p = services.crear_prestamo(self.ventas, self.c, self.obra, hoy, hoy, activos=[self.a1, self.a2])
+        self.client.force_login(bodeguero)
+
+        r = self.client.get(f"/prestamos/{p.codigo}/qr.png")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r["Content-Type"], "image/png")
+
+        r = self.client.get(f"/prestamos/{p.codigo}/etiqueta/")
+        self.assertContains(r, "RTM-0001")
+        self.assertContains(r, "RTM-0002")
+
+        r = self.client.get(p.get_absolute_url())
+        self.assertContains(r, f"/prestamos/{p.codigo}/qr.png")
+        self.assertContains(r, self.a1.get_absolute_url())
+        # La ficha de cada máquina es accesible para el bodeguero
+        self.assertEqual(self.client.get(self.a1.get_absolute_url()).status_code, 200)

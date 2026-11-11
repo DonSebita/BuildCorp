@@ -3,7 +3,7 @@
 {% block titulo %}Escanear QR{% endblock %}
 {% block contenido %}
 <div class="encabezado">
-  <div><h1>Escanear una máquina</h1><p>Apunta al QR de la etiqueta y se abre su ficha.</p></div>
+  <div><h1>Escanear una máquina o un pack</h1><p>Apunta al QR de la etiqueta: si es una máquina se abre su ficha; si es un pack arrendado, el préstamo con todas sus máquinas.</p></div>
 </div>
 <div class="row g-4">
   <div class="col-lg-6"><section class="hoja"><div class="hoja-cuerpo" id="escaner"></div></section></div>
@@ -19,6 +19,7 @@
   const res = document.getElementById("resultado");
   BCEscaner.montar({
     contenedor: document.getElementById("escaner"),
+    alLeerPack: (folio) => { location.href = `/prestamos/${encodeURIComponent(folio)}/`; },
     alLeer: async (codigo) => {
       res.hidden = false;
       const cuerpo = res.querySelector(".hoja-cuerpo");
