@@ -75,6 +75,8 @@ Pruebas: `python manage.py test apps`
    El script instala PostgreSQL, Nginx y Python; crea la base, el `.env`, aplica migraciones, carga la demo y configura Gunicorn (`systemd`), Nginx y el `crontab`.
 4. Abrir `http://<IP_PUBLICA>/` y anotar la IP arriba en este README.
 
+**Despliegue automático:** basta con hacer `git push` a `main`. En la EC2, el timer `buildcorp-actualizar.timer` revisa GitHub cada 2 minutos y, si hay commits nuevos, ejecuta [`deploy/actualizar.sh`](deploy/actualizar.sh) (`git pull`, dependencias si cambió `requirements.txt`, `migrate`, `collectstatic` y reinicio de Gunicorn). El historial queda en `/home/ubuntu/buildcorp-deploy.log`; para forzarlo a mano: `sudo bash deploy/actualizar.sh`. Los cambios al `.env` siguen haciéndose en el servidor.
+
 Si la IP cambia: editar `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` y `SITE_URL` en `.env`, luego `sudo systemctl restart buildcorp`. Los QR se generan al vuelo con la IP vigente; basta con reimprimir las etiquetas.
 
 > La cámara en vivo del navegador requiere HTTPS. Con `http://<IP>` el escáner usa **«Tomar foto del QR»**, que funciona sin HTTPS, y siempre se puede escribir el código.

@@ -358,3 +358,30 @@ Este archivo registra las consultas y la ayuda pedida a herramientas de IA duran
 **Archivos:** `prompts_ia.md` (modificado). En la EC2: actualización del código desplegado
 
 ---
+
+### #26 · 2026-11-11 · ¿Se puede desplegar automáticamente?
+
+**Prompt:**
+> siempre tengo que meterme al servidor para incorporar los cambios?, no puede ser automatico
+
+**Apoyo de la IA:**
+- Explicó dos formas de automatizar el despliegue: GitHub Actions que entra por SSH al hacer push, o una tarea programada en la EC2 que revisa GitHub cada pocos minutos y se actualiza sola.
+- Recomendó la segunda para AWS Academy (la IP cambia al reiniciar el laboratorio y no requiere guardar la llave `.pem` en GitHub ni abrir el puerto 22 a internet).
+
+**Archivos:** `prompts_ia.md` (modificado)
+
+---
+
+### #27 · 2026-11-11 · Despliegue automático en la EC2
+
+**Prompt:**
+> haz lo que haga falta
+
+**Apoyo de la IA:**
+- Creó `deploy/actualizar.sh`: si `origin/main` tiene commits nuevos hace `git merge --ff-only`, instala dependencias si cambió `requirements.txt`, aplica `migrate` y `collectstatic` y reinicia Gunicorn; usa un lock para no solaparse y registra cada despliegue en `/home/ubuntu/buildcorp-deploy.log`.
+- Creó el servicio y el timer de systemd (`buildcorp-actualizar`) que lo ejecutan cada 2 minutos, y los agregó a `setup_ec2.sh` para futuras instalaciones.
+- Documentó el flujo en el README y la decisión en PLANIFICACION; activó el timer en la EC2 y lo probó con este mismo commit.
+
+**Archivos:** `deploy/actualizar.sh`, `deploy/buildcorp-actualizar.service`, `deploy/buildcorp-actualizar.timer` (creados), `deploy/setup_ec2.sh`, `README.md`, `PLANIFICACION.md`, `prompts_ia.md` (modificados)
+
+---

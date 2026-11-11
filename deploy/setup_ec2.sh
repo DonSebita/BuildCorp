@@ -62,4 +62,9 @@ nginx -t && systemctl reload nginx
 echo "==> Cron (morosidad y mantenciones)"
 crontab -u "$USUARIO" deploy/crontab.txt
 
-echo "Listo: http://${IP}/  (usuarios demo: admin, bodeguero, encargado, ventas · clave buildcorp2026)"
+echo "==> Despliegue automático (revisa GitHub cada 2 minutos)"
+cp deploy/buildcorp-actualizar.service deploy/buildcorp-actualizar.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now buildcorp-actualizar.timer
+
+echo "Listo:http://${IP}/  (usuarios demo: admin, bodeguero, encargado, ventas · clave buildcorp2026)"

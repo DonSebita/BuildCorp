@@ -376,7 +376,10 @@ BuildCorp/
     ├── nginx_buildcorp.conf
     ├── gunicorn.service
     ├── crontab.txt
-    └── setup_ec2.sh           # Script de instalación en EC2
+    ├── setup_ec2.sh           # Script de instalación en EC2
+    ├── actualizar.sh          # Despliegue automático (git pull + migrate + collectstatic + reinicio)
+    ├── buildcorp-actualizar.service
+    └── buildcorp-actualizar.timer  # Ejecuta actualizar.sh cada 2 minutos
 ```
 
 ---
@@ -461,6 +464,7 @@ Diseño responsivo con Bootstrap. Las pantallas de entrega y devolución se pien
 7. Configurar Nginx como reverse proxy, junto con `/static` y `/media`.
 8. Instalar el `crontab` para morosidad y mantenimientos.
 9. Comprobar el acceso en `http://<IP_PUBLICA>/` y anotar la IP en el `README.md`.
+10. Activar el despliegue automático: un timer de systemd revisa `origin/main` cada 2 minutos y ejecuta `deploy/actualizar.sh` si hay commits nuevos. Se eligió este enfoque (el servidor consulta GitHub) en vez de GitHub Actions por SSH porque no requiere guardar la llave `.pem` en GitHub, ni abrir el puerto 22 a internet, y sigue funcionando aunque cambie la IP.
 
 > ⚠️ **AWS Academy:** la IP pública **cambia cada vez que se reinicia el laboratorio**. Si el lab lo permite, asigna una **Elastic IP**. Si no, actualiza `ALLOWED_HOSTS` y el README antes de la evaluación. Deja todo automatizado en `deploy/setup_ec2.sh`.
 
