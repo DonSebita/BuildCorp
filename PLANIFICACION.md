@@ -462,6 +462,8 @@ Diseño responsivo con Bootstrap. Las pantallas de entrega y devolución se pien
 8. Instalar el `crontab` para morosidad y mantenimientos.
 9. Comprobar el acceso en `http://<IP_PUBLICA>/` y anotar la IP en el `README.md`.
 
+> 🔒 **HTTPS:** además del acceso por IP, se publica `https://<IP-con-guiones>.sslip.io` con certificado Let's Encrypt (`deploy/setup_ssl.sh`). Nginx termina el TLS y Django confía en `X-Forwarded-Proto` (`SECURE_PROXY_SSL_HEADER`). Las cookies quedan sin `Secure` para no romper el login por `http://<IP>`.
+
 > ⚠️ **AWS Academy:** la IP pública **cambia cada vez que se reinicia el laboratorio**. Si el lab lo permite, asigna una **Elastic IP**. Si no, actualiza `ALLOWED_HOSTS` y el README antes de la evaluación. Deja todo automatizado en `deploy/setup_ec2.sh`.
 
 ---
